@@ -5,24 +5,24 @@ import math
 x = 2
 
 if x < 5 or (x > 10 and x < 20):
-    print "The value is OK."
+  print "The value is OK."
 
 if x < 5 or 10 < x < 20:
-    print "The value is OK."
+  print "The value is OK."
 
-for i in [1,2,3,4,5]:
-    print "This is iteration number", i
+for i in [1, 2, 3, 4, 5]:
+  print "This is iteration number", i
 
 x = 10
 while x >= 0:
-    print "x is still not negative:", x
-    x = x-1
+  print "x is still not negative:", x
+  x = x - 1
 
 for value in range(5):
-    print value
+  print value
 
 x = input("Please enter a number: ")
-print "The square of that number is", x*x
+print "The square of that number is", x * x
 
 # list
 x = ['i', 'am', 'xie', 'liang']
@@ -86,7 +86,7 @@ for t in logic_test_list:
 #
 
 class Basket:
-  def __init__(self, contents=[]):
+  def __init__(self, contents = []):
     self.contents = contents[:]
 
   def add(self, element):
