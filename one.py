@@ -99,12 +99,21 @@ class Basket:
     return result
 
 
+my_age = 2
+def test():
+  my_age = 18
+  print 'test(): my_age = ' + str(my_age)
+
+
 #
 # main()
 #
 
 def main():
   print '##### This is main() #####'
+
+  test()
+  print 'my age: ' + str(my_age)
 
   init_fruits = ['apple', 'orange']
   basket_a = Basket(init_fruits)
