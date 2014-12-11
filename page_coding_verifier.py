@@ -85,6 +85,8 @@ class MyHTTPRequestHandler(SimpleHTTPRequestHandler):
             print '=== Action Json: ' + str(action_json)
 
             res = self.handle_action(action, action_json)
+            print '=== Return: ' + res
+
         except Exception, e:
             err = {
                 'succeed': False,
