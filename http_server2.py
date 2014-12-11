@@ -1,30 +1,23 @@
 #!/usr/bin/env python
 
 import sys
-import shutil
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
-
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
 
 
 class MyHTTPRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
-        """Serve a GET request."""
-
         print '===== self.path: ' + str(self.path)
         print '===== translate path: ' + str(self.translate_path(self.path))
 
-        f = self.send_head()
-        if f:
-            self.copyfile(f, self.wfile)
-            f.close()
+        f = "[1, 2, 3]"
 
-    def nothing(self):
-        return
+        self.send_response(200)
+        encoding = sys.getfilesystemencoding()
+        self.send_header("Content-type", "text/html; charset=%s" % encoding)
+        self.send_header("Content-Length", str(len(f)))
+        self.end_headers()
+        self.wfile.write(f)
 
 
 #
