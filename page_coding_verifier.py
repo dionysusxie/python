@@ -21,7 +21,8 @@ def normalize_path(path):
     # abandon query parameters
     #path = path.split('?', 1)[0]
     #path = path.split('#', 1)[0]
-    path = posixpath.normpath(urllib.unquote(path))
+    #path = posixpath.normpath(urllib.unquote(path))
+    path = urllib.unquote(path)
     return path.strip()
 
 def get_action_from_path(path):
