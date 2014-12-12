@@ -1,4 +1,5 @@
 *.swp
 .project
 .pydevproject
+nohup.out
 

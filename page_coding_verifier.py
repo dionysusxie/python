@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python -u
 # localhost:8000/add_filter/{"request_url":"abc","advertiser_id":"123"}
 
 import os
