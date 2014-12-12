@@ -13,6 +13,7 @@ import shutil
 import mimetypes
 import sys
 import json
+import time
 
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
@@ -136,14 +137,16 @@ class MyHTTPRequestHandler(SimpleHTTPRequestHandler):
         ret = {}
 
         if 'request_url' in new_query and 'advertiser_id' in new_query:
+            time_now = int(time.time())
+
             ret['succeed'] = True
-            ret['last_encountered'] = 0
-            ret['sitepage'] = 0          # => '1'
-            ret['skupage'] = 0           # => '2'
+            ret['last_encountered'] = time_now
+            ret['sitepage'] = time_now   # => '1'
+            ret['skupage'] = time_now    # => '2'
             ret['cartpage'] = 0          # => '3'
             ret['conversionpage'] = 0    # => '4'
             ret['orderpage'] = 0         # => '5'
-            ret['paidpage'] = 0          # => '6'
+            ret['paidpage'] = time_now   # => '6'
             ret['conversionbutton'] = 0  # => '7'
             ret['eventpage'] = 0         # => '8'
             ret['eventbutton'] = 0       # => '9'
