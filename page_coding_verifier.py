@@ -19,28 +19,12 @@ from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 
 def normalize_path(path):
     # abandon query parameters
-    path = path.split('?', 1)[0]
-    path = path.split('#', 1)[0]
+    #path = path.split('?', 1)[0]
+    #path = path.split('#', 1)[0]
     path = posixpath.normpath(urllib.unquote(path))
     return path.strip()
 
-def get_path_sec(path, index):
-    """
-    Paras:
-        path  The path seperated with /
-        index The section index, starting from 1.
-
-    Note: The first char of 'path' will set to be / forcedly!
-        And if 'index' is out of range, return None.
-
-    E.g.,
-        get_path_sec('/abc/def', 0) ==> ''
-        get_path_sec('/abc/def', 1) ==> 'abc'
-        get_path_sec('/abc/def', 2) ==> 'def'
-        get_path_sec('/abc/def', 3) ==> None
-
-    """
-
+def get_action_from_path(path):
     if len(path) == 0:
         return None
 
@@ -48,9 +32,20 @@ def get_path_sec(path, index):
     if path[0] != '/':
         path = '/' + path
 
-    sec_list = path.split('/')
-    if 0 <= index < len(sec_list):
-        return sec_list[index]
+    sec_list = path.split('/', 2)
+    return sec_list[1]
+
+def get_action_json_from_path(path):
+    if len(path) == 0:
+        return None
+
+    # make sure begin with /
+    if path[0] != '/':
+        path = '/' + path
+
+    sec_list = path.split('/', 2)
+    if len(sec_list) >= 3:
+        return sec_list[2]
     else:
         return None
 
@@ -70,7 +65,7 @@ def parseJsonStr(s):
     except:
         err = {
             'succeed': False,
-            'error': 'Bad json format',
+            'error': 'Bad json format: %s' % s
         }
         return (False, json.dumps(err))
 
@@ -78,8 +73,8 @@ class MyHTTPRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         try:
             normalized_path = normalize_path(self.path)
-            action = get_path_sec(normalized_path, 1)
-            action_json = get_path_sec(normalized_path, 2)
+            action = get_action_from_path(normalized_path)
+            action_json = get_action_json_from_path(normalized_path)
 
             print ''
             print '=== self.path          : ' + str(self.path)
