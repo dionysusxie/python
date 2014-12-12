@@ -78,13 +78,13 @@ class MyHTTPRequestHandler(SimpleHTTPRequestHandler):
             action_json = get_action_json_from_path(normalized_path)
 
             print ''
-            print '=== self.path          : ' + str(self.path)
-            print '=== Normalized path    : ' + normalized_path
-            print '=== Action : ' + str(action)
-            print '=== Action Json: ' + str(action_json)
+            print '=== self.path      : ' + str(self.path)
+            print '=== Normalized path: ' + normalized_path
+            print '=== Action         : ' + str(action)
+            print '=== Action Json    : ' + str(action_json)
 
             res = self.handle_action(action, action_json)
-            print '=== Return: ' + res
+            print '=== Return         : ' + res
 
         except Exception, e:
             err = {
