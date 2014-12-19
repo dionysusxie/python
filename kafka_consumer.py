@@ -4,6 +4,15 @@ import time
 from kafka import KafkaClient, SimpleConsumer
 from syslog import LOG_INFO
 
+#
+# configs
+#
+
+g_brokers_addr = 'localhost:9092'
+g_consumer_group = 'page_code_verify'
+g_topic = 'test'
+
+
 LOG_INFO = 0
 LOG_WARNING = 1
 LOG_ERROR = 2
@@ -28,12 +37,14 @@ def log_error(log):
     return mlog(LOG_ERROR, log)
 
 
-brokers_addr = 'localhost:9092'
-log_info('Connecting to kafka cluster: ' + brokers_addr)
-kafka = KafkaClient(brokers_addr)
+log_info('Connecting to kafka cluster: ' + g_brokers_addr)
+kafka = KafkaClient(g_brokers_addr)
 
 try:
-    consumer = SimpleConsumer(kafka, "my-group", "test")
+
+    log_info('Consumer group: ' + g_consumer_group)
+    log_info('Consumer topic: ' + g_topic)
+    consumer = SimpleConsumer(kafka, g_consumer_group, g_topic)
 
     for message in consumer:
         # message is raw byte string -- decode if necessary!
