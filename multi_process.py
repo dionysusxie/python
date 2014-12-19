@@ -4,7 +4,9 @@ import multiprocessing # Process, Queue
 import os
 import time
 import Queue
+import sys
 
+TXT_EXIT = 'EXIT'
 
 def pid_info(title):
     print
@@ -15,30 +17,63 @@ def pid_info(title):
     print 'process id:', os.getpid()
 
 
-def f(q):
+def f(in_queue, out_queue):
     pid_info('function f()')
 
-    for i in xrange(10):
-        q.put([i])
-        time.sleep(1)
+    try:
+        i = 0
+        while True:
+            out_queue.put([i])
+            i += 1
 
-    q.put([])
+            # Check the input queue
+            to_exit = False
+            while True:
+                try:
+                    in_msg = in_queue.get_nowait()
+                except Queue.Empty:
+                    break
+                else:
+                    sys.stderr.write('[' + str(os.getpid()) + '] RECEIVED ' + str(in_msg) + '\n')
+                    if TXT_EXIT == in_msg:
+                        to_exit = True
+                        break
+
+            if to_exit: break
+
+            # sleep
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print 'user interupt the app in sub process'
+    except:
+        pass
+
+    out_queue.put(TXT_EXIT)
 
 if __name__ == '__main__':
     pid_info('main line')
 
-    q = multiprocessing.Queue()
-    p = multiprocessing.Process(target=f, args=(q,))
+    queue_out = multiprocessing.Queue()
+    queue_in  = multiprocessing.Queue()
+
+    p = multiprocessing.Process(target=f, args=(queue_out, queue_in))
     p.start()
 
-    while True:
-        try:
-            item = q.get_nowait()
-        except Queue.Empty:
-            pass
-        else:
-            if len(item) == 0: break
-            print item
+    try:
+        while True:
+            try:
+                item = queue_in.get_nowait()
+            except Queue.Empty:
+                pass
+            else:
+                print '[' + str(os.getpid()) + '] RECEIVED', item
+                if TXT_EXIT == item: break
+                queue_out.put('OK')
+    except KeyboardInterrupt:
+        print 'user interupt the app in main process'
+    except:
+        pass
 
+    queue_out.put(TXT_EXIT)
     p.join()
 
