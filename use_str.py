@@ -74,3 +74,12 @@ print 'This is a test'.replace('is', 'eez')
 print '  \t I am Xieliang.  \n\t'.strip() + '#'
 print '*** SPAM * for * everyone!!! ***'.strip(' *!') + '#'
 
+# string.translate(s, table, deletions)
+print
+trans_table = string.maketrans('cs', 'kz')
+print 'translate table: ', trans_table[97:123]
+origin_str = 'this is a incredible test'
+print 'origin str     : ' + origin_str
+print 'translated str : ' + origin_str.translate(trans_table)
+
+
