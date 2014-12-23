@@ -59,14 +59,12 @@ try:
         args = (8000, write_queue, read_queue))
     web_server_process.start()
 
+    # get messages from kafka
     while True:
-        print read_queue.get()
-
-    for message in consumer:
-        # message is raw byte string -- decode if necessary!
-        # e.g., for unicode: `message.decode('utf-8')`
-        # print 'message.__dict__:', message.__dict__
-        log_info('Message received - ' + repr(message.message.value))
+        msg = consumer.get_message(block = True, timeout = 0.1,
+                                   get_partition_info = False)
+        if msg:
+            log_info('Message received - ' + str(msg))
 
 except KeyboardInterrupt:
     log_info('User interrupt this app.')
