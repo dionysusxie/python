@@ -24,6 +24,9 @@ g_consumer_group = 'page_code_verify_001'
 g_consume_init_position = CONSUME_FROM_TAIL
 
 
+#
+# log system
+#
 
 LOG_INFO = 0
 LOG_WARNING = 1
@@ -53,8 +56,10 @@ log_info('Connecting to kafka cluster: ' + g_brokers_addr)
 kafka = KafkaClient(g_brokers_addr)
 
 try:
-    log_info('Consumer group: ' + g_consumer_group)
     log_info('Consumer topic: ' + g_topic)
+    log_info('Consumer group: ' + g_consumer_group)
+    log_info('Consumer init position: ' + str(g_consume_init_position))
+
     consumer = SimpleConsumer(kafka, g_consumer_group, g_topic)
 
     # create a sub process to handle http requests
