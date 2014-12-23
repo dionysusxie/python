@@ -14,9 +14,15 @@ from kafka import KafkaClient, SimpleConsumer
 # configs
 #
 
+CONSUME_FROM_HEAD = 0
+CONSUME_FROM_CURRENT = 1
+CONSUME_FROM_TAIL = 2
+
 g_brokers_addr = 'localhost:9092'
-g_consumer_group = 'page_code_verify'
 g_topic = 'test'
+g_consumer_group = 'page_code_verify_001'
+g_consume_init_position = CONSUME_FROM_TAIL
+
 
 
 LOG_INFO = 0
@@ -58,6 +64,9 @@ try:
         target = page_coding_verifier.run,
         args = (8000, write_queue, read_queue))
     web_server_process.start()
+
+    # adjust offset
+    consumer.seek(0, g_consume_init_position)
 
     # get messages from kafka
     while True:
