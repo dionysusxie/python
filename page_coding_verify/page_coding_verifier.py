@@ -73,8 +73,8 @@ def parseJsonStr(s):
         return (False, json.dumps(err))
 
 class MyHTTPRequestHandler(SimpleHTTPRequestHandler):
-    process_queue_in = None
-    process_queue_out = None
+    process_read_queue = None
+    process_write_queue = None
 
     def do_GET(self):
         try:
@@ -127,7 +127,7 @@ class MyHTTPRequestHandler(SimpleHTTPRequestHandler):
         ret = {}
         if 'request_url' in new_filter and 'advertiser_id' in new_filter:
             ret['succeed'] = True
-            MyHTTPRequestHandler.process_queue_out.put(['add_filter'])
+            MyHTTPRequestHandler.process_write_queue.put(['add_filter'])
         else:
             ret['succeed'] = False
             ret['error'] = 'Missing some fileds'
@@ -166,11 +166,11 @@ class MyHTTPRequestHandler(SimpleHTTPRequestHandler):
 #
 
 def run(port,
-        process_queue_in,
-        process_queue_out):
+        process_read_queue,
+        process_write_queue):
 
-    MyHTTPRequestHandler.process_queue_in = process_queue_in
-    MyHTTPRequestHandler.process_queue_out = process_queue_out
+    MyHTTPRequestHandler.process_read_queue = process_read_queue
+    MyHTTPRequestHandler.process_write_queue = process_write_queue
     MyHTTPRequestHandler.protocol_version = "HTTP/1.0"
 
     server_address = ('', port)

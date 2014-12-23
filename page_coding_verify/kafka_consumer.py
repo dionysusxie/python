@@ -52,20 +52,21 @@ try:
     consumer = SimpleConsumer(kafka, g_consumer_group, g_topic)
 
     # create a sub process to handle http requests
-    queue_out = multiprocessing.Queue()
-    queue_in  = multiprocessing.Queue()
-    p = multiprocessing.Process(target = page_coding_verifier.run,
-                                args = (8000, queue_out, queue_in))
-    p.start()
+    write_queue = multiprocessing.Queue()
+    read_queue  = multiprocessing.Queue()
+    web_server_process = multiprocessing.Process(
+        target = page_coding_verifier.run,
+        args = (8000, write_queue, read_queue))
+    web_server_process.start()
 
     while True:
-        print queue_in.get()
+        print read_queue.get()
 
-#     for message in consumer:
-#         # message is raw byte string -- decode if necessary!
-#         # e.g., for unicode: `message.decode('utf-8')`
-#         # print 'message.__dict__:', message.__dict__
-#         log_info('Message received - ' + repr(message.message.value))
+    for message in consumer:
+        # message is raw byte string -- decode if necessary!
+        # e.g., for unicode: `message.decode('utf-8')`
+        # print 'message.__dict__:', message.__dict__
+        log_info('Message received - ' + repr(message.message.value))
 
 except KeyboardInterrupt:
     log_info('User interrupt this app.')
