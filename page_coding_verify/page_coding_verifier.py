@@ -18,7 +18,6 @@ import time
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 from BaseHTTPServer import HTTPServer
 
-
 def normalize_path(path):
     # abandon query parameters
     #path = path.split('?', 1)[0]
@@ -58,7 +57,7 @@ def parseJsonStr(s):
         s  A json string.
 
     Return
-        A tuple: (True, JsonObj) or (False, ErrorStr)
+        A tuple: (True, JsonObj) or (False, )
 
     """
 
@@ -66,11 +65,7 @@ def parseJsonStr(s):
         js_obj = json.loads(s)
         return (True, js_obj)
     except:
-        err = {
-            'succeed': False,
-            'error': 'Bad json format: %s' % s
-        }
-        return (False, json.dumps(err))
+        return (False,)
 
 class MyHTTPRequestHandler(SimpleHTTPRequestHandler):
     process_read_queue = None
@@ -107,59 +102,19 @@ class MyHTTPRequestHandler(SimpleHTTPRequestHandler):
         self.wfile.write(res)
 
     def handle_action(self, action, action_json):
-        if action == 'add_filter':
-            return self.handle_add_filter(action_json)
-        elif action == 'query':
-            return self.handle_query(action_json)
-        else:
+        res = parseJsonStr(action_json)
+        if not res[0]:
             err = {
                 'succeed': False,
-                'error': 'unsupported action: %s' % str(action),
+                'error': 'Bad json format: %s' % action_json
             }
             return json.dumps(err)
 
-    def handle_add_filter(self, action_json):
-        res = parseJsonStr(action_json)
-        if not res[0]:
-            return res[1]
-
-        new_filter = res[1]
-        ret = {}
-        if 'request_url' in new_filter and 'advertiser_id' in new_filter:
-            ret['succeed'] = True
-            MyHTTPRequestHandler.process_write_queue.put(['add_filter'])
-        else:
-            ret['succeed'] = False
-            ret['error'] = 'Missing some fileds'
+        action_param = res[1]
+        MyHTTPRequestHandler.process_write_queue.put((action, action_param))
+        ret = MyHTTPRequestHandler.process_read_queue.get()
         return json.dumps(ret)
 
-    def handle_query(self, action_json):
-        res = parseJsonStr(action_json)
-        if not res[0]:
-            return res[1]
-
-        new_query = res[1]
-        ret = {}
-
-        if 'request_url' in new_query and 'advertiser_id' in new_query:
-            time_now = int(time.time())
-
-            ret['succeed'] = True
-            ret['last_encountered'] = time_now
-            ret['sitepage'] = time_now   # => '1'
-            ret['skupage'] = time_now    # => '2'
-            ret['cartpage'] = 0          # => '3'
-            ret['conversionpage'] = 0    # => '4'
-            ret['orderpage'] = 0         # => '5'
-            ret['paidpage'] = time_now   # => '6'
-            ret['conversionbutton'] = 0  # => '7'
-            ret['eventpage'] = 0         # => '8'
-            ret['eventbutton'] = 0       # => '9'
-        else:
-            ret['succeed'] = False
-            ret['error'] = 'Missing some fileds'
-
-        return json.dumps(ret)
 
 #
 # run
