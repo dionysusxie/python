@@ -21,8 +21,13 @@ CONSUME_FROM_HEAD = 0
 CONSUME_FROM_CURRENT = 1
 CONSUME_FROM_TAIL = 2
 
-g_brokers_addr = 'localhost:9092'
-g_topic = 'test'
+# g_brokers_addr = 'localhost:9092'
+# g_topic = 'test'
+g_brokers_addr = ('kk001.karl.kafka.allyes.com:9092,'
+                  'kk002.karl.kafka.allyes.com:9092,'
+                  'kk003.karl.kafka.allyes.com:9092')
+g_topic = 'idigger'
+
 g_consumer_group = 'page_code_verify_001'
 g_consume_init_position = CONSUME_FROM_TAIL
 
@@ -65,8 +70,11 @@ def log_error(log):
 
 class ActionParamError(Exception): pass
 
-class PageCodingVerifier:
-    def __init__(self, filter_life_time_in_minuter = 5):
+class PageCodingVerifier(object):
+
+    TXT_DEATH_TIME = 'death_time'
+
+    def __init__(self, filter_life_time_in_minuter=5):
         self.filter_life_time_in_minuter = filter_life_time_in_minuter
         assert self.filter_life_time_in_minuter > 0
 
@@ -74,39 +82,47 @@ class PageCodingVerifier:
         self.last_check_time = time.time()
 
     def add_filter(self, new_filter):
-        """
-        Add a new filter. Every filter will survive for
-        'self.filter_life_time_in_minuter'. If existed, it'll get another
-        'self.filter_life_time_in_minuter' of lifetime.
+        """Add a new filter.
 
-        new_filter: A dict; e.g., {"request_url":"abc"}
-        @return: None
-        @except: A ActionParamError will be raised if 'new_filter' contains
-                 wrong content.
+        Every filter will survive for 'self.filter_life_time_in_minuter'.
+        If alreadly existed, it'll get another 'self.filter_life_time_in_minuter'
+        of lifetime.
+
+        Args:
+            new_filter: A dict; E.g., {"request_url":"abc"}
+
+        Returns:
+            None
+
+        Raises:
+            ActionParamError: Will be raised if 'new_filter' contains wrong
+                content.
         """
 
         try:
-            new_filter["request_url"].lower()   # make sure it's a string
+            new_filter["request_url"].lower()  # make sure it's a string
             key = new_filter["request_url"]
         except:
             raise ActionParamError
 
         if not self.filters.has_key(key):
             self.filters[key] = {}
-        self.filters[key]['death_time'] = time.time() + self.filter_life_time_in_minuter * 60
+        self.filters[key][self.TXT_DEATH_TIME] = (
+            time.time() + self.filter_life_time_in_minuter * 60)
 
     def query(self, query_obj):
         pass
 
     def periodic_check(self, time_now):
+        """check every 1 minutes to delete dead filters"""
+
         if time_now < self.last_check_time:
             self.last_check_time = time_now
 
-        # check every 1 minutes to delete dead filters
         if time_now - self.last_check_time >= 60:
             keys_to_be_deleted = []
             for key in self.filters:
-                if time_now >= self.filters[key]['death_time']:
+                if time_now >= self.filters[key][self.TXT_DEATH_TIME]:
                     keys_to_be_deleted.append(key)
             for key in keys_to_be_deleted:
                 del self.filters[key]
@@ -114,8 +130,8 @@ class PageCodingVerifier:
 
     def handle_message(self, msg):
         try:
+            # log_info('Message received - ' + repr(msg))
             log_content = msg.message.value.strip()
-            #log_info('Message received - ' + repr(log_content))
             binary_stream = base64.standard_b64decode(log_content)
             rawlog = carpenter_log_pb2.RawLog()
             rawlog.ParseFromString(binary_stream)
@@ -124,16 +140,11 @@ class PageCodingVerifier:
             return
 
     def _handle_rawlog(self, rawlog):
-        print '*** RawLog db_name: %s; allyes_id: %s' % (rawlog.db_name, rawlog.allyes_id)
+        # print '*** RawLog db_name: %s; allyes_id: %s' % (rawlog.db_name, rawlog.allyes_id)
         request_url = rawlog.request_url
 
 
-g_pg_verifier = PageCodingVerifier()
-
-
-def periodic_check(time_now):
-    g_pg_verifier.periodic_check(time_now)
-
+def handle_web_requests(time_now, read_queue, write_queue, page_verifier):
     try:
         msg = read_queue.get_nowait()
     except Queue.Empty:
@@ -152,7 +163,7 @@ def periodic_check(time_now):
 
     if action == ACTION_ADD_FILTER:
         try:
-            g_pg_verifier.add_filter(action_param)
+            page_verifier.add_filter(action_param)
             ret['succeed'] = True
         except ActionParamError:
             ret['succeed'] = False
@@ -175,10 +186,10 @@ def periodic_check(time_now):
 
     write_queue.put(ret)
 
-log_info('Connecting to kafka cluster: ' + g_brokers_addr)
-kafka = KafkaClient(g_brokers_addr)
+def main():
+    log_info('Connecting to kafka cluster: ' + g_brokers_addr)
+    kafka = KafkaClient(g_brokers_addr)
 
-try:
     log_info('Consumer topic: ' + g_topic)
     log_info('Consumer group: ' + g_consumer_group)
     log_info('Consumer init position: ' + str(g_consume_init_position))
@@ -186,8 +197,8 @@ try:
     consumer = SimpleConsumer(kafka, g_consumer_group, g_topic)
 
     # create a sub process to handle http requests
-    write_queue = multiprocessing.Queue()
     read_queue  = multiprocessing.Queue()
+    write_queue = multiprocessing.Queue()
     web_server_process = multiprocessing.Process(
         target = page_coding_verifier.run,
         args = (8000, write_queue, read_queue))
@@ -196,24 +207,33 @@ try:
     # adjust offset
     consumer.seek(0, g_consume_init_position)
 
-    # get messages from kafka
-    last_check_time = time.time()
-    CHECK_INTERVAL_IN_SECONDS = 0.05
-    while True:
-        msg = consumer.get_message(block = True,
-                                   timeout = CHECK_INTERVAL_IN_SECONDS,
-                                   get_partition_info = False)
-        if msg:
-            g_pg_verifier.handle_message(msg)
+    try:
+        # get messages from kafka to handle
 
-        TIME_NOW = time.time()
-        if TIME_NOW < last_check_time: last_check_time = TIME_NOW
-        if TIME_NOW - last_check_time >= CHECK_INTERVAL_IN_SECONDS:
-            last_check_time = TIME_NOW
-            periodic_check(TIME_NOW)
+        pg_verifier = PageCodingVerifier()
+        last_check_time = time.time()
+        CHECK_INTERVAL_IN_SECONDS = 0.05
 
-except KeyboardInterrupt:
-    log_info('User interrupt this app.')
+        while True:
+            msg = consumer.get_message(block=True,
+                                       timeout=CHECK_INTERVAL_IN_SECONDS,
+                                       get_partition_info=False)
+            if msg:
+                pg_verifier.handle_message(msg)
 
-log_info('App close now.')
-kafka.close()
+            TIME_NOW = time.time()
+            if TIME_NOW < last_check_time: last_check_time = TIME_NOW
+            if TIME_NOW - last_check_time >= CHECK_INTERVAL_IN_SECONDS:
+                pg_verifier.periodic_check(TIME_NOW)
+                handle_web_requests(TIME_NOW, read_queue, write_queue, pg_verifier)
+                last_check_time = TIME_NOW
+
+    except KeyboardInterrupt:
+        log_info('User interrupt this app.')
+
+    log_info('App close now.')
+    kafka.close()
+
+
+if __name__ == '__main__':
+    main()
