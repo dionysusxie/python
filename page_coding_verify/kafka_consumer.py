@@ -69,6 +69,7 @@ class PageCodingVerifier:
         assert self.filter_life_time_in_minuter > 0
 
         self.filters = {}
+        self.last_check_time = time.time()
 
     def add_filter(self, new_filter):
         """
@@ -83,15 +84,12 @@ class PageCodingVerifier:
         """
 
         try:
-            _new_filter = {}
-            _new_filter["request_url"] = new_filter["request_url"]
-            _new_filter["advertiser_id"] = new_filter["advertiser_id"]
-            _new_filter["request_url"].lower()   # make sure it's a string
-            _new_filter["advertiser_id"].lower() # make sure it's a string
+            new_filter["request_url"].lower()   # make sure it's a string
+            new_filter["advertiser_id"].lower() # make sure it's a string
+            key = (new_filter["request_url"], new_filter["advertiser_id"])
         except:
             raise ActionParamError
 
-        key = (_new_filter["request_url"], _new_filter["advertiser_id"])
         if not self.filters.has_key(key):
             self.filters[key] = {}
         self.filters[key]['death_time'] = time.time() + self.filter_life_time_in_minuter * 60
@@ -99,10 +97,27 @@ class PageCodingVerifier:
     def query(self, query_obj):
         pass
 
+    def periodic_check(self, time_now):
+        if time_now < self.last_check_time:
+            self.last_check_time = time_now
+
+        # check every 1 minutes to delete dead filters
+        if time_now - self.last_check_time >= 60:
+            keys_to_be_deleted = []
+            for key in self.filters:
+                if time_now >= self.filters[key]['death_time']:
+                    keys_to_be_deleted.append(key)
+            for key in keys_to_be_deleted:
+                del self.filters[key]
+            self.last_check_time = time_now
+
+
 g_pg_verifier = PageCodingVerifier()
 
 
-def periodic_check():
+def periodic_check(time_now):
+    g_pg_verifier.periodic_check(time_now)
+
     try:
         msg = read_queue.get_nowait()
     except Queue.Empty:
@@ -118,6 +133,7 @@ def periodic_check():
         return
 
     action_param = msg[1]
+
     if action == ACTION_ADD_FILTER:
         try:
             g_pg_verifier.add_filter(action_param)
@@ -126,18 +142,18 @@ def periodic_check():
             ret['succeed'] = False
             ret['error'] = "Invalid param: %s" % json.dumps(action_param)
     elif action == ACTION_QUERY:
-        time_now = int(time.time())
+        time_now_int = int(time_now)
         ret['succeed'] = True
-        ret['last_encountered'] = time_now
-        ret['sitepage'] = time_now   # => '1'
-        ret['skupage'] = time_now    # => '2'
-        ret['cartpage'] = 0          # => '3'
-        ret['conversionpage'] = 0    # => '4'
-        ret['orderpage'] = 0         # => '5'
-        ret['paidpage'] = time_now   # => '6'
-        ret['conversionbutton'] = 0  # => '7'
-        ret['eventpage'] = 0         # => '8'
-        ret['eventbutton'] = 0       # => '9'
+        ret['last_encountered'] = time_now_int
+        ret['sitepage'] = time_now_int  # => '1'
+        ret['skupage'] = time_now_int   # => '2'
+        ret['cartpage'] = 0             # => '3'
+        ret['conversionpage'] = 0       # => '4'
+        ret['orderpage'] = 0            # => '5'
+        ret['paidpage'] = time_now_int  # => '6'
+        ret['conversionbutton'] = 0     # => '7'
+        ret['eventpage'] = 0            # => '8'
+        ret['eventbutton'] = 0          # => '9'
     else:
         assert False
 
@@ -178,7 +194,7 @@ try:
         if TIME_NOW < last_check_time: last_check_time = TIME_NOW
         if TIME_NOW - last_check_time >= CHECK_INTERVAL_IN_SECONDS:
             last_check_time = TIME_NOW
-            periodic_check()
+            periodic_check(TIME_NOW)
 
 except KeyboardInterrupt:
     log_info('User interrupt this app.')
