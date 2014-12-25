@@ -6,7 +6,9 @@ import time
 import Queue
 import sys
 import json
+import base64
 import page_coding_verifier
+import carpenter_log_pb2
 
 from kafka import KafkaClient, SimpleConsumer
 
@@ -77,7 +79,7 @@ class PageCodingVerifier:
         'self.filter_life_time_in_minuter'. If existed, it'll get another
         'self.filter_life_time_in_minuter' of lifetime.
 
-        new_filter: A dict; e.g., {"request_url":"abc", "advertiser_id":"123"}
+        new_filter: A dict; e.g., {"request_url":"abc"}
         @return: None
         @except: A ActionParamError will be raised if 'new_filter' contains
                  wrong content.
@@ -85,8 +87,7 @@ class PageCodingVerifier:
 
         try:
             new_filter["request_url"].lower()   # make sure it's a string
-            new_filter["advertiser_id"].lower() # make sure it's a string
-            key = (new_filter["request_url"], new_filter["advertiser_id"])
+            key = new_filter["request_url"]
         except:
             raise ActionParamError
 
@@ -110,6 +111,21 @@ class PageCodingVerifier:
             for key in keys_to_be_deleted:
                 del self.filters[key]
             self.last_check_time = time_now
+
+    def handle_message(self, msg):
+        try:
+            log_content = msg.message.value.strip()
+            #log_info('Message received - ' + repr(log_content))
+            binary_stream = base64.standard_b64decode(log_content)
+            rawlog = carpenter_log_pb2.RawLog()
+            rawlog.ParseFromString(binary_stream)
+            self._handle_rawlog(rawlog)
+        except:
+            return
+
+    def _handle_rawlog(self, rawlog):
+        print '*** RawLog db_name: %s; allyes_id: %s' % (rawlog.db_name, rawlog.allyes_id)
+        request_url = rawlog.request_url
 
 
 g_pg_verifier = PageCodingVerifier()
@@ -188,7 +204,7 @@ try:
                                    timeout = CHECK_INTERVAL_IN_SECONDS,
                                    get_partition_info = False)
         if msg:
-            log_info('Message received - ' + str(msg))
+            g_pg_verifier.handle_message(msg)
 
         TIME_NOW = time.time()
         if TIME_NOW < last_check_time: last_check_time = TIME_NOW

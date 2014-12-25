@@ -2,7 +2,7 @@
 # /usr/local/bin/python -u
 
 # E.g.,
-# localhost:8000/add_filter/{"request_url":"abc","advertiser_id":"123"}
+# localhost:8000/add_filter/{"request_url":"abc"}
 
 import os
 import posixpath

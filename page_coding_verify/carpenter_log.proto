@@ -1,0 +1,297 @@
+package carpenter;
+
+option java_package = "com.allyes.carpenter";
+option java_outer_classname = "CarpenterLogs";
+
+enum ThreeValueBool {
+  UNKNOWN = 0;
+  TRUE = 1;
+  FALSE = 2;
+}
+
+enum LogType {
+  // the allow_alias option should be explictly written if it is supported
+  // option (allow_alias) = true;
+  UNKOWN = 0;
+  SHOW = 1;
+  CLICK = 2;
+  TRACK = 3;
+  IDIGGER = 4;
+  IDIGGER_EVENT = 5;
+  REAL_SHOW = 6;
+  OMNI = 7;
+
+  // 8-49 reserved by ssp
+  SSP_SHOW = 8;
+  SSP_CLICK = 9;
+  SSP_RETURNING_TRAFFIC = 10; // 流量返回
+  SSP_IMPRESSION = 11; // 曝光(展示成功)
+  SSP_VIDEO_REQ = 20;
+  SSP_VIDEO_CLICK = 21;
+  SSP_VIDEO_RETURNING_TRAFFIC = 22;
+  SSP_VIDEO_IMPRESSION = 23;
+  SSP_VIDEO_TRACK_EVENT = 24;
+
+  // 50-79 reserved by WinMax
+  BID = 50;
+  BID_SUCCESS = 51;  // Deprecated by type 1
+  DYNAMIC_CREATIVE = 52;
+  TRAFFIC_DISTRIBUTED = 53;  // WARNING: Used by iMedia incorrectly
+  BID_VALID = 54;
+  BID_INVALID = 55;
+  
+  // 80-99 reserved by iMedia
+ 
+  // 100-119 reserved by A3 track
+  A3_TRACK = 100;
+  PD_PROMOTION = 101;
+  PD_WECHAT = 102;
+  PD_MWEB = 103;
+  PD_MOBILE = 110;
+
+  COOKIE_MAPPING = 255;
+}
+
+enum AppType {
+  BROWSER = 0;
+  MOBILE_SDK = 1;
+  MOBILE_BROWSER = 2;
+  APP = 3;
+}
+
+enum PostDataType {
+  Invalid = 0;
+  AllyesOpenRTB_Json = 1;
+  GoogleOpenRTB_ProtoBuf = 2;
+  TanxBidding_ProtoBuf = 3;
+  TencentBidding_ProtoBuf = 4;
+  BaiduBidding_ProtoBuf = 5;
+  SinaRTB_Json = 6;
+  DirectDeals = 100;
+}
+
+message SSPExtraInfo {
+  extensions 20000 to max;
+
+  optional string version = 1;
+
+  optional string seat_id = 2;
+  optional uint64 price = 3;
+  optional string array_of_rtb = 4;
+  // optional string ext = 5; // DELETED, BUT TAG RESERVED
+
+  enum Distribution {
+    RTB = 0;
+    AD_NETWORK = 1;
+    EXCHANGE = 2;
+  }
+  optional Distribution distribution = 6;
+
+  enum DistributionType {
+    DIST_TYPE_RTB = 0;
+    DIST_TYPE_PACK_OFF = 1; // 包断
+    DIST_TYPE_TRANSFER = 2; // 转载
+  }
+  optional DistributionType dist_type = 7;
+
+  optional uint64 bid_price = 8;
+
+  optional string player_ver = 9;
+
+  optional string deal_id = 10;
+
+  enum TrackEvent {
+	CREATIVEVIEW = 1;
+	START = 2;
+	FIRST_QUARTILE = 3;
+	MID_POINT = 4;
+	THIRD_QUARTILE = 5;
+	COMPLETE = 6;
+	MUTE = 7;
+	UNMUTE = 8;
+	PAUSE = 9;
+	REWIND = 10;
+	RESUME = 11;
+	FULL_SCREEN = 12;
+	EXIT_FULL_SCREEN = 13;
+	EXPAND = 14;
+	COLLAPSE = 15;
+	ACCEPT_INVITATION = 16;
+	CLOSE = 17;
+	SKIP = 18;
+	PROGRESS = 19;
+  }
+
+  optional TrackEvent track_event = 11;
+
+  optional string track_event_offset = 12;
+
+  optional string platform = 13;
+}
+
+message RawLog {
+  extensions 20000 to max;
+
+  optional uint64 timestamp = 1;
+  optional LogType type = 2;
+  optional string db_name = 3;
+
+  optional bool new_user = 4;
+  optional string allyes_id = 5;
+  optional string ip = 6;
+  optional string request_url = 7;
+  optional string referrer = 8;
+  optional string user_agent = 9;
+  optional string language = 10;
+
+  optional string channel_id = 11;
+  optional string banner_id = 12;
+  optional string solution_id = 13;
+  optional string target_url_id = 14;
+  optional string target_keywords = 15;
+  optional string third_party_id = 16;
+  optional AppType app_type = 17;
+
+  optional uint64 selling_price = 18; // unit: 1/10000 cent
+  optional string device_id = 19;
+  optional uint64 timestamp_ms_part = 20; // micro-second part
+  optional string product_name = 21;
+  optional string sub_type = 22; // log sub-type, only valid if type is OMNI(7)
+  optional uint64 click_selling_price = 23; // unit: 1/10000 cent
+  optional string config_id = 24;
+  optional string impression_id = 25;
+  optional string ext_ad_info = 26;
+  optional uint32 cheating_index = 27;
+  optional string client_ip = 28;
+  optional string forwarded_ip = 29;
+  optional string mobile_no = 30;
+  optional string http_referrer = 31;
+
+  optional uint32 de_interval = 32;
+  optional uint32 interval = 33;
+  optional uint32 exchange_id = 34;
+  optional PostDataType post_data_type = 35;
+  optional bytes post_data = 36;
+  optional string request_id = 37;
+  optional string region_id = 38;
+  optional string deal_id = 39;
+  
+  optional SSPExtraInfo ssp_extra_info = 50;
+
+  optional string z_1 = 90; // omni-field 1
+
+  optional string x_src_host = 100;
+  optional string x_src_file = 101;
+  optional sint64 x_src_line_num = 102 [default=-1];
+}
+
+message Pair {
+  required string key = 1;
+  required string value = 2;
+}
+
+// Click/Show SawLog will be deprecated for LubanLog is the new one.
+message DeprecatedCSSawLog {
+  extensions 20000 to max;
+
+  optional RawLog raw_log = 1;
+
+  optional uint32 count = 2;
+  optional string v_advertiser_id = 3;
+  optional string v_solution_id = 4;
+  optional string v_campaign_id = 5;
+  optional string v_channel_id = 6;
+  optional string v_channel_group_id = 7;
+  optional string v_channel_pool_id = 8;
+  optional string v_banner_id = 9;
+  optional string v_parent_banner_id = 10;
+  optional string v_banner_group_id = 11;
+  optional string v_banner_pool_id = 12;
+  repeated Pair placement_kvs = 13;
+
+  optional string region_id = 14;
+  optional string language_id = 15;
+  optional string os_id = 16;
+  optional string browser_id = 17;
+  optional string operator_id = 18;
+  optional bool is_casting = 19;
+}
+
+//SSP SawLog
+message SSPSawLog {
+  extensions 20000 to max;
+
+  optional RawLog raw_log = 1;
+  optional string region_id = 2;
+  optional string language_id = 3;
+  
+  // ssp base info
+  optional string creative_id = 4;  // from ssp_Creative uuid(raw_log.banner_id) get creative_id default = 0
+  optional string adspace_id = 5; // from ssp_Adspace uuid(raw_log.channel_id) get adspace_id
+  optional string buyer_user_id = 6; // from dimAd creative_id get user_id
+  optional string seller_user_id = 7; // from dimMedia adspace_id get user_id
+  optional string media_id = 8; // from dimMedia adspace_id get media_id
+  optional string channel_id = 9; // from dimMedia adspace_id get channel_id 频道id
+  optional string bind_id = 10; // from dimMedia adspace_id get bind_id
+  optional string location_id = 11; // from dimLocation location(CNBJ00) or location_t(CNBJ0000) get id  
+}
+
+enum CampSourceType {
+  SRC_CAMP = 0;
+  SRC_SEM = 1;
+  SRC_WEBUNION = 2;
+}
+
+message LinkedAction {
+  optional uint64 timestamp = 1;
+  optional uint32 count = 2;
+  optional string v_advertiser_id = 3;
+  optional string v_solution_id = 4;
+  optional string v_campaign_id = 5;
+  optional string v_channel_id = 6;
+  optional string v_channel_group_id = 7;
+  optional string v_channel_pool_id = 8;
+  optional string v_banner_id = 9;
+  optional string v_parent_banner_id = 10;
+  optional string v_banner_group_id = 11;
+  optional string v_banner_pool_id = 12;
+  repeated Pair placement_kvs = 13;
+  optional string v_device_id = 14;
+  optional string v_impression_id = 15;
+  optional CampSourceType camp_type = 16;
+  optional string v_media_domain = 17;
+  optional uint32 v_exchange_id = 18;
+  optional string agency_from = 19;
+  optional PostDataType post_data_type = 20;
+  optional bytes post_data = 21;
+}
+
+// Track point SawLog
+message TrackPointSawLog {
+  extensions 20000 to max;
+
+  optional carpenter.RawLog raw_log = 1;
+
+  optional string point_id = 2;
+  optional string order_id = 3;
+  optional string order_value =4;
+  optional uint32 is_direct = 5; // 是否是直接营销点
+  repeated Pair point_kvs = 6;
+  optional LinkedAction linked_show = 7;
+  optional LinkedAction linked_click = 8;
+}
+
+enum PPBLogType {
+  BID_RESPONSE = 50;
+  IMPRESSION = 1;
+}
+
+message PPBLog {
+  extensions 20000 to max;
+
+  repeated string fields = 1;
+
+  optional string x_src_host = 100;
+  optional string x_src_file = 101;
+  optional sint64 x_src_line_num = 102 [default=-1];
+}
