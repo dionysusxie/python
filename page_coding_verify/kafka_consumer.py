@@ -9,6 +9,7 @@ import json
 import base64
 import page_coding_verifier
 import carpenter_log_pb2
+import idigger_util
 
 from kafka import KafkaClient, SimpleConsumer
 
@@ -140,8 +141,8 @@ class PageCodingVerifier(object):
             return
 
     def _handle_rawlog(self, rawlog):
-        # print '*** RawLog db_name: %s; allyes_id: %s' % (rawlog.db_name, rawlog.allyes_id)
-        request_url = rawlog.request_url
+        print ('*** RawLog db_name: %7s; allyes_id: %25s; request_url: %s' %
+               (rawlog.db_name, rawlog.allyes_id, rawlog.request_url))
 
 
 def handle_web_requests(time_now, read_queue, write_queue, page_verifier):
