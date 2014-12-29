@@ -58,8 +58,18 @@ class IdiggerUtil(object):
         return cls.get_http_query_section(url, 'ao')
 
     @classmethod
-    def get_page_url(cls, rawlog):
-        return 'http://wwww.test.com'
+    def get_page_url(cls, url):
+        """
+        Returns: hn + pu; None if not found!
+        """
+
+        hn = cls.get_http_query_section(url, 'hn')
+        if not hn: return None
+
+        pu = cls.get_http_query_section(url, 'pu')
+        if not pu: return None
+
+        return hn + pu
 
     @classmethod
     def get_page_kinds(cls, rawlog):
@@ -109,8 +119,14 @@ def _unit_test_get_site_code():
     if IdiggerUtil.get_site_code(url_no_sitecode + '&ao=T-000032-2') != 'T-000032-2':
         assert False, 'IdiggerUtil.get_site_code(): Unit test failed: #1'
 
+def _unit_test_get_page_url():
+    url = 'http://idigger.allyes.com/main/adftrack?db=mso&v=3.0&r=1315018823&hn=www.yougou.com&lt=i&plf=Windows%20NT%205.1&cs=UTF-8&ul=zh-cn&bt=Chrome&bs=1152x864,24-bit,11.6%20r602,1&pt=%E3%80%90%E6%96%B0%E7%99%BE%E4%BC%A6New%20Balance%20ML515%20%E8%93%9D%E8%89%B2%E3%80%91New%20Balance%E6%96%B0%E7%99%BE%E4%BC%A6%202014%E5%B9%B4%E6%96%B0%E6%AC%BE%E7%94%B7%E5%AD%90%E5%A4%8D%E5%8F%A4%E9%9E%8BML515OB&rf=http%3A%2F%2Fwww.yougou.com%2Ff-newbalance-0-0-1-1.html&pu=%2Fc-newbalance%2Fsku-ml515-100061692.shtml&ncf=0&tag=&ao=T-000436-01&tsuid=&tsoid=&tst=&tkv=&ecm=66364734346e41f7aa4eef4af5749079%60%60%60%60%60%60100061692%60%60%60%60%60%60%60&ayf=&cct=1418359803&sc=690&nv=0'
+    if IdiggerUtil.get_page_url(url) != 'www.yougou.com/c-newbalance/sku-ml515-100061692.shtml':
+        assert False, 'IdiggerUtil.get_page_url(): Unit test failed: #0'
+
 def _unit_test():
     _unit_test_get_http_query_section()
     _unit_test_get_site_code()
+    _unit_test_get_page_url()
 
 _unit_test()

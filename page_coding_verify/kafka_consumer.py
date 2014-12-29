@@ -157,12 +157,12 @@ class PageCodingVerifier(object):
             return
 
     def _handle_rawlog(self, rawlog):
-        #print ('*** RawLog db_name: %7s; allyes_id: %25s; request_url: %s' %
-        #       (rawlog.db_name, rawlog.allyes_id, rawlog.request_url))
+        print ('*** RawLog db_name: %7s; allyes_id: %25s; request_url: %s' %
+               (rawlog.db_name, rawlog.allyes_id, rawlog.request_url))
 
-        page_url = IdiggerUtil.get_page_url(rawlog)
-        if not self.filters.has_key(page_url):
-            return
+        page_url = IdiggerUtil.get_page_url(rawlog.request_url)
+        if not page_url: return
+        if not self.filters.has_key(page_url): return
 
         update_timestamps = self.filters[page_url][self.TXT_UPDATE_TIMESTAMPS]
 
