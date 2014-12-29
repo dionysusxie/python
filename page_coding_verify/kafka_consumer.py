@@ -10,7 +10,7 @@ import base64
 import page_coding_verifier
 import carpenter_log_pb2
 import idigger_util
-
+from idigger_util import IdiggerUtil
 from kafka import KafkaClient, SimpleConsumer
 
 
@@ -74,6 +74,8 @@ class ActionParamError(Exception): pass
 class PageCodingVerifier(object):
 
     TXT_DEATH_TIME = 'death_time'
+    TXT_UPDATE_TIMESTAMPS = 'update_timestamps'
+    TXT_LAST_ENCOUNTERED = 'last_encountered'
 
     def __init__(self, filter_life_time_in_minuter=5):
         self.filter_life_time_in_minuter = filter_life_time_in_minuter
@@ -108,8 +110,22 @@ class PageCodingVerifier(object):
 
         if not self.filters.has_key(key):
             self.filters[key] = {}
-        self.filters[key][self.TXT_DEATH_TIME] = (
+
+        page_info = self.filters[key]
+
+        # update lifetime
+        page_info[self.TXT_DEATH_TIME] = (
             time.time() + self.filter_life_time_in_minuter * 60)
+
+        # initialize updating-timestamps
+        if not page_info.has_key(self.TXT_UPDATE_TIMESTAMPS):
+            page_info[self.TXT_UPDATE_TIMESTAMPS] = {}
+            page_update_timestamps = page_info[self.TXT_UPDATE_TIMESTAMPS]
+            page_update_timestamps[self.TXT_LAST_ENCOUNTERED] = 0
+            for page_type in IdiggerUtil.PAGE_TYPES:
+                page_update_timestamps[page_type] = 0
+
+        print self.filters
 
     def query(self, query_obj):
         pass
@@ -141,9 +157,28 @@ class PageCodingVerifier(object):
             return
 
     def _handle_rawlog(self, rawlog):
-        print ('*** RawLog db_name: %7s; allyes_id: %25s; request_url: %s' %
-               (rawlog.db_name, rawlog.allyes_id, rawlog.request_url))
+        #print ('*** RawLog db_name: %7s; allyes_id: %25s; request_url: %s' %
+        #       (rawlog.db_name, rawlog.allyes_id, rawlog.request_url))
 
+        page_url = IdiggerUtil.get_page_url(rawlog)
+        if not self.filters.has_key(page_url):
+            return
+
+        update_timestamps = self.filters[page_url][self.TXT_UPDATE_TIMESTAMPS]
+
+        self._update_dict_if_greater(update_timestamps,
+                                     self.TXT_LAST_ENCOUNTERED,
+                                     rawlog.timestamp)
+
+        page_kinds = IdiggerUtil.get_page_kinds(rawlog)
+        for kind in page_kinds:
+            self._update_dict_if_greater(update_timestamps, kind,
+                                         rawlog.timestamp)
+
+    @classmethod
+    def _update_dict_if_greater(cls, the_dict, key, new_value):
+        if (not the_dict.has_key(key)) or new_value > the_dict[key]:
+            the_dict[key] = new_value
 
 def handle_web_requests(time_now, read_queue, write_queue, page_verifier):
     try:

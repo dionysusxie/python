@@ -5,6 +5,28 @@ import urlparse
 
 class IdiggerUtil(object):
 
+    ENUM_SITE_PAGE = 0  # sitepage
+    ENUM_SKU_PAGE = 1  # skupage
+    ENUM_CART_PAGE = 2  # cartpage
+    ENUM_ORDER_PAGE = 3  # orderpage
+    ENUM_PAID_PAGE = 4  # paidpage
+    ENUM_CONVERSION_PAGE = 5  # conversionpage
+    ENUM_CONVERSION_BUTTON = 6  # conversionbutton
+    ENUM_EVENT_PAGE = 7  # eventpage
+    ENUM_EVENT_BUTTON = 8  # eventbutton
+    ENUM_MAX = 9
+
+    PAGE_TYPES = ('sitepage',  # 0
+                  'skupage',  # 1
+                  'cartpage',  # 2
+                  'orderpage',  # 3
+                  'paidpage',  # 4
+                  'conversionpage',  # 5
+                  'conversionbutton',  # 6
+                  'eventpage',  # 7
+                  'eventbutton',  # 8
+    )
+
     @classmethod
     def get_http_query_section(cls, url, query_key):
         """
@@ -34,6 +56,29 @@ class IdiggerUtil(object):
     @classmethod
     def get_site_code(cls, url):
         return cls.get_http_query_section(url, 'ao')
+
+    @classmethod
+    def get_page_url(cls, rawlog):
+        return 'http://wwww.test.com'
+
+    @classmethod
+    def get_page_kinds(cls, rawlog):
+        """Get page kinds.
+        Args:
+            rawlog: A log of kind RawLog.
+
+        Returns:
+            A tuple contains the page-kinds of input rawlog.
+            E.g., ('sitepage', ...)
+
+        Raises:
+            None
+        """
+
+        ret = []
+        ret.append(cls.PAGE_TYPES[0])
+        ret.append(cls.PAGE_TYPES[1])
+        return tuple(ret)
 
 
 def _unit_test_get_http_query_section():
