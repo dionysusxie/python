@@ -1,5 +1,7 @@
 #!/usr/bin/env python -u
+# -*- coding: utf-8 -*-
 
+import urllib
 import urlparse
 
 
@@ -72,6 +74,41 @@ class IdiggerUtil(object):
         return hn + pu
 
     @classmethod
+    def get_product_codes(cls, url):
+        """
+        ecm 第七列的三种格式：
+            产品分类^产品名^产品ID^^产品价格
+            商品id
+            商品id*数量
+
+        Returns:
+            A tuple of string. E.g., ("0568022", "0568023")
+            Or None if there is no product code.
+        """
+
+        ecm = cls.get_http_query_section(url, 'ecm')
+        if not ecm: return None
+
+        fields = ecm.split('`')
+        if not fields: return None
+        if len(fields) < 7: return None
+
+        f7 = urllib.unquote(fields[6])
+        if not f7: return None
+
+        f7_fields = f7.split('^')
+
+        if len(f7_fields) == 1:
+            pid_and_num = f7_fields[0].split('*')
+            if pid_and_num[0]:
+                return (pid_and_num[0], )
+        elif len(f7_fields) >= 3:
+            if f7_fields[2]:
+                return (f7_fields[2], )
+
+        return None
+
+    @classmethod
     def get_page_kinds(cls, rawlog):
         """Get page kinds.
         Args:
@@ -86,8 +123,10 @@ class IdiggerUtil(object):
         """
 
         ret = []
-        ret.append(cls.PAGE_TYPES[0])
-        ret.append(cls.PAGE_TYPES[1])
+
+        site_code = cls.get_site_code(rawlog.request_url)
+        if not site_code: return tuple(ret)
+
         return tuple(ret)
 
 
@@ -124,9 +163,78 @@ def _unit_test_get_page_url():
     if IdiggerUtil.get_page_url(url) != 'www.yougou.com/c-newbalance/sku-ml515-100061692.shtml':
         assert False, 'IdiggerUtil.get_page_url(): Unit test failed: #0'
 
+def _unit_test_get_product_codes():
+    test_url_no_ecm = 'http://idigger.allyes.com/main/adftrack?db=mso&v=3.0&r=802029047&hn=www.yougou.com&lt=i&plf=Linux&cs=UTF-8&ul=en-us&bt=Chrome&bs=1366x768,24-bit,11.8%20r800,1&pt=%E3%80%90DickiesDickies%20031581%20%E6%B7%B1%E6%B5%B7%E5%86%9B%E8%93%9D%E6%9D%A1%E7%BA%B9%E3%80%91Dickies%E5%B8%9D%E5%AE%A2%20%E7%94%B7%E5%A3%AB%E6%B7%B1%E6%B5%B7%E5%86%9B%E8%93%9D%E6%9D%A1%E7%BA%B9%E7%89%9B%E4%BB%94%E8%A3%A4%20031581&rf=http%3A%2F%2Fwww.yougou.com%2Ff-dickies-1LTFA-0-0.html&pu=%2Fc-dickies%2Fsku-031581-99919909.shtml&ncf=0&tag=&ao=T-000436-01&tsuid=&tsoid=&tst=&tkv=&ayf=&cct=1382351003&sc=11&nv=1'
+
+    # 0
+    ecm = '&ecm=%60%60%60%60%60%6099919909%60%60%60%60%60%60%60'
+    pcodes = IdiggerUtil.get_product_codes(test_url_no_ecm + ecm)
+    if pcodes and len(pcodes) == 1 and pcodes[0] == '99919909':
+        pass
+    else:
+        assert False, 'IdiggerUtil.get_product_codes(): Unit test failed: #0'
+
+    # 1.1, product id
+    ecm = '&ecm=``````99919907```````'
+    pcodes = IdiggerUtil.get_product_codes(test_url_no_ecm + ecm)
+    if pcodes and len(pcodes) == 1 and pcodes[0] == '99919907':
+        pass
+    else:
+        assert False, 'get_product_codes(): Unit test failed: #1.1'
+
+    # 1.2, pid*number
+    ecm = '&ecm=``````99919907*3```````'
+    pcodes = IdiggerUtil.get_product_codes(test_url_no_ecm + ecm)
+    if pcodes and len(pcodes) == 1 and pcodes[0] == '99919907':
+        pass
+    else:
+        assert False, 'get_product_codes(): Unit test failed: #1.2'
+
+    # 3, No ecm
+    pcodes = IdiggerUtil.get_product_codes(test_url_no_ecm)
+    if pcodes:
+        assert False, 'get_product_codes(): Unit test failed: #3'
+
+    # 4, No product
+    ecm = '&ecm=%60%60%60%60%60%60%60%60%60%60%60%60%60'
+    pcodes = IdiggerUtil.get_product_codes(test_url_no_ecm + ecm)
+    if pcodes:
+      assert False, 'get_product_codes(): Unit test failed: #4'
+
+    #
+    # 5, catrgory^pname^pid^^price
+    #
+
+    # 5.1
+    ecm = u'&ecm=``````153^韩国SKINFOOD黑豆双头眉笔0.2g 5号 灰褐色 进口^A010262^^22```````'
+    pcodes = IdiggerUtil.get_product_codes(test_url_no_ecm + ecm)
+    if pcodes and len(pcodes) == 1 and pcodes[0] == 'A010262':
+        pass
+    else:
+        assert False, 'get_product_codes(): Unit test failed: #5.1'
+
+    # 5.2
+    ecm = u'&ecm=``````153^韩国SKINFOOD黑豆双头眉笔0.2g 5号 灰褐色 进口^^^22```````'
+    pcodes = IdiggerUtil.get_product_codes(test_url_no_ecm + ecm)
+    if pcodes:
+        assert False, 'get_product_codes(): Unit test failed: #5.2'
+
+    # 5.3
+    ecm = u'&ecm=``````153^韩国SKINFOOD黑豆双头眉笔0.2g 5号 灰褐色 进口```````'
+    pcodes = IdiggerUtil.get_product_codes(test_url_no_ecm + ecm)
+    if pcodes:
+        assert False, 'get_product_codes(): Unit test failed: #5.3'
+
+    # 5.4
+    ecm = '&ecm=``````153^```````'
+    pcodes = IdiggerUtil.get_product_codes(test_url_no_ecm + ecm)
+    if pcodes:
+        assert False, 'get_product_codes(): Unit test failed: #5.4'
+
 def _unit_test():
     _unit_test_get_http_query_section()
     _unit_test_get_site_code()
     _unit_test_get_page_url()
+    _unit_test_get_product_codes()
 
 _unit_test()
