@@ -199,7 +199,7 @@ def _unit_test_get_product_codes():
     ecm = '&ecm=%60%60%60%60%60%60%60%60%60%60%60%60%60'
     pcodes = IdiggerUtil.get_product_codes(test_url_no_ecm + ecm)
     if pcodes:
-      assert False, 'get_product_codes(): Unit test failed: #4'
+        assert False, 'get_product_codes(): Unit test failed: #4'
 
     #
     # 5, catrgory^pname^pid^^price
