@@ -159,9 +159,27 @@ class IdiggerUtil(object):
         site_code = cls.get_site_code(rawlog.request_url)
         if not site_code: return ()  # empty tuple
 
+        # ENUM_SKU_PAGE = 1
         pids = cls.get_product_codes(rawlog.request_url)
         if pids: return (cls.PAGE_TYPES[cls.ENUM_SKU_PAGE], )
 
+        # ENUM_CART_PAGE = 2
+        pids_in_cart = cls.get_skuid_list_in_shopcart(rawlog.request_url)
+        if pids_in_cart: return (cls.PAGE_TYPES[cls.ENUM_CART_PAGE], )
+
+        # ENUM_ORDER_PAGE = 3  # orderpage
+
+        # ENUM_PAID_PAGE = 4  # paidpage
+
+        # ENUM_CONVERSION_PAGE = 5  # conversionpage
+
+        # ENUM_CONVERSION_BUTTON = 6  # conversionbutton
+
+        # ENUM_EVENT_PAGE = 7  # eventpage
+
+        # ENUM_EVENT_BUTTON = 8  # eventbutton
+
+        # ENUM_SITE_PAGE = 0  # sitepage
         return (cls.PAGE_TYPES[cls.ENUM_SITE_PAGE], )
 
 
