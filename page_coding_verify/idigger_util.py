@@ -109,25 +109,60 @@ class IdiggerUtil(object):
         return None
 
     @classmethod
+    def get_skuid_list_in_shopcart(cls, url):
+        """Get tuple of products in shop-cart.
+
+        日志的三种格式：
+            event-id@产品类别^产品名^产品ID|产品类别^产品名^产品ID|...
+            event-id@产品ID|产品ID|...
+            产品ID|产品ID|...
+
+        Returns:
+            A tuple of string, maybe empty.
+            E.g., ("0568022", "0568023").
+        """
+
+        ecm = cls.get_http_query_section(url, 'ecm')
+        if not ecm: return ()
+
+        fields = ecm.split('`')
+        if len(fields) < 9: return ()
+
+        shopcart = urllib.unquote(fields[8])
+        if not shopcart: return ()
+
+        shopcart_fields = shopcart.split('@')
+        if len(shopcart_fields) > 2: return ()
+
+        product_list = shopcart_fields[-1].split('|')
+        skuid_list = []
+        for p in product_list:
+            skuid = p.split('^')[-1]
+            if skuid: skuid_list.append(skuid)
+
+        return tuple(skuid_list)
+
+    @classmethod
     def get_page_kinds(cls, rawlog):
         """Get page kinds.
         Args:
             rawlog: A log of kind RawLog.
 
         Returns:
-            A tuple contains the page-kinds of input rawlog.
+            A tuple contains the page-kinds of input rawlog;
             E.g., ('sitepage', ...)
 
         Raises:
             None
         """
 
-        ret = []
-
         site_code = cls.get_site_code(rawlog.request_url)
-        if not site_code: return tuple(ret)
+        if not site_code: return ()  # empty tuple
 
-        return tuple(ret)
+        pids = cls.get_product_codes(rawlog.request_url)
+        if pids: return (cls.PAGE_TYPES[cls.ENUM_SKU_PAGE], )
+
+        return (cls.PAGE_TYPES[cls.ENUM_SITE_PAGE], )
 
 
 def _unit_test_get_http_query_section():
@@ -231,10 +266,81 @@ def _unit_test_get_product_codes():
     if pcodes:
         assert False, 'get_product_codes(): Unit test failed: #5.4'
 
+def _unit_test_get_skuid_list_in_shopcart():
+    test_url_no_ecm = "http://idigger.allyes.com/main/adftrack?db=mso&v=3.0&r=802029047&hn=www.yougou.com&lt=i&plf=Linux&cs=UTF-8&ul=en-us&bt=Chrome&bs=1366x768,24-bit,11.8%20r800,1&pt=%E3%80%90DickiesDickies%20031581%20%E6%B7%B1%E6%B5%B7%E5%86%9B%E8%93%9D%E6%9D%A1%E7%BA%B9%E3%80%91Dickies%E5%B8%9D%E5%AE%A2%20%E7%94%B7%E5%A3%AB%E6%B7%B1%E6%B5%B7%E5%86%9B%E8%93%9D%E6%9D%A1%E7%BA%B9%E7%89%9B%E4%BB%94%E8%A3%A4%20031581&rf=http%3A%2F%2Fwww.yougou.com%2Ff-dickies-1LTFA-0-0.html&pu=%2Fc-dickies%2Fsku-031581-99919909.shtml&ncf=0&tag=&ao=T-000436-01&tsuid=&tsoid=&tst=&tkv=&ayf=&cct=1382351003&sc=11&nv=1"
+
+    # 0, no ecm
+    skuid_list = IdiggerUtil.get_skuid_list_in_shopcart(test_url_no_ecm)
+    if skuid_list:
+        assert False, 'get_skuid_list_in_shopcart(): Unit test failed: #0'
+
+    # 1,
+    ecm_without_shopcart = '&ecm=%60%60%60%60%60%6099919909%60%60%60%60%60%60%60'
+    skuid_list = IdiggerUtil.get_skuid_list_in_shopcart(
+        test_url_no_ecm + ecm_without_shopcart)
+    if skuid_list:
+        assert False, 'get_skuid_list_in_shopcart(): Unit test failed: #1'
+
+    # 2,
+    ecm = '&ecm=%60%60%60%60%60%60%60%6099919909%60%60%60%60%60'
+    skuid_list = IdiggerUtil.get_skuid_list_in_shopcart(test_url_no_ecm + ecm)
+    if skuid_list and len(skuid_list) == 1 and skuid_list[0] == '99919909':
+        pass
+    else:
+        assert False, 'get_skuid_list_in_shopcart(): Unit test failed: #2'
+
+    # 3,
+    ecm = '&ecm=%60%60%60%60%60%60%60%60%257Cp9928%60%60%60%60%60'
+    skuid_list = IdiggerUtil.get_skuid_list_in_shopcart(test_url_no_ecm + ecm)
+    if skuid_list and len(skuid_list) == 1 and skuid_list[0] == 'p9928':
+        pass
+    else:
+        assert False, 'get_skuid_list_in_shopcart(): Unit test failed: #3'
+
+    # 4,
+    ecm = '&ecm=%60%60%60%60%60%60%60%60%257Cp9928%257C123%257C%60%60%60%60%60'
+    skuid_list = IdiggerUtil.get_skuid_list_in_shopcart(test_url_no_ecm + ecm)
+    if (skuid_list and len(skuid_list) == 2 and
+        skuid_list[0] == 'p9928' and skuid_list[1] == '123'):
+        pass
+    else:
+        assert False, 'get_skuid_list_in_shopcart(): Unit test failed: #4'
+
+    # 5,
+    ecm = '&ecm=%60%60%60%60%60%60%60%60%257Cp9928%257Cabc^de^123%257C%60%60%60%60%60'
+    skuid_list = IdiggerUtil.get_skuid_list_in_shopcart(test_url_no_ecm + ecm)
+    if (skuid_list and len(skuid_list) == 2 and
+        skuid_list[0] == 'p9928' and skuid_list[1] == '123'):
+        pass
+    else:
+        assert False, 'get_skuid_list_in_shopcart(): Unit test failed: #5'
+
+    # 6, 1@a^b^2|c^d^33|
+    ecm = ('&ecm=%60%60%60%60%60%60%60%60' +
+           urllib.quote(urllib.quote('1@a^b^2|c^d^33|')) +
+           '%60%60%60%60%60')
+    skuid_list = IdiggerUtil.get_skuid_list_in_shopcart(test_url_no_ecm + ecm)
+    if (skuid_list and len(skuid_list) == 2 and
+        skuid_list[0] == '2' and skuid_list[1] == '33'):
+        pass
+    else:
+        assert False, 'get_skuid_list_in_shopcart(): Unit test failed: #6'
+
+    # 7,
+    ecm = '&ecm=%60%60%60%60%60%60%60%60%257Cp11744%257Cp16730%257Cp7521%257Cp8115%60%60%60%60%60'
+    skuid_list = IdiggerUtil.get_skuid_list_in_shopcart(test_url_no_ecm + ecm)
+    if (skuid_list and len(skuid_list) == 4 and
+        skuid_list[0] == 'p11744' and skuid_list[1] == 'p16730' and
+        skuid_list[2] == 'p7521' and skuid_list[3] == 'p8115'):
+        pass
+    else:
+        assert False, 'get_skuid_list_in_shopcart(): Unit test failed: #7'
+
 def _unit_test():
     _unit_test_get_http_query_section()
     _unit_test_get_site_code()
     _unit_test_get_page_url()
     _unit_test_get_product_codes()
+    _unit_test_get_skuid_list_in_shopcart()
 
 _unit_test()
