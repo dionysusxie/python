@@ -71,6 +71,55 @@ class IdiggerUtil(object):
             return None
 
     @classmethod
+    def parse_qs(cls, qs, sep1='&', sep2='=', keep_blank_values=False,
+                 strict_parsing=False):
+        """Parse a query given as a string argument with the given separators.
+
+        Arguments:
+            qs: string to be parsed
+
+            sep1: The primary separator.
+
+            sep2: The secondary separator.
+
+            keep_blank_values: flag indicating whether blank values in
+                percent-encoded queries should be treated as blank strings.  A
+                true value indicates that blanks should be retained as blank
+                strings.  The default false value indicates that blank values
+                are to be ignored and treated as if they were  not included.
+
+            strict_parsing: flag indicating what to do with parsing errors. If
+                false (the default), errors are silently ignored. If true,
+                errors raise a ValueError exception.
+
+        Returns:
+            A dict where the value of each key is a list of string.
+        """
+
+        pairs = [s for s in qs.split(sep1)]
+        r = {}
+        for name_value in pairs:
+            if not name_value and not strict_parsing:
+                continue
+            nv = name_value.split(sep2, 1)
+            if len(nv) != 2:
+                if strict_parsing:
+                    raise ValueError, "bad query field: %r" % (name_value,)
+                # Handle case of a control-name with no equal sign
+                if keep_blank_values:
+                    nv.append('')
+                else:
+                    continue
+            if len(nv[1]) or keep_blank_values:
+                name = nv[0]
+                value = nv[1]
+                if name in r:
+                    r[name].append(value)
+                else:
+                    r[name] = [value]
+        return r
+
+    @classmethod
     def get_http_query_section(cls, url, query_key):
         """
         Args:
@@ -201,7 +250,9 @@ class IdiggerUtil(object):
                 E.g., { 'ecm': ['````````````'] }
 
         Returns:
-            ENUM_ORDER_PAGE or ENUM_PAID_PAGE or None
+            ENUM_ORDER_PAGE or
+            ENUM_PAID_PAGE or
+            None
         """
 
         if not query_params: return None
@@ -219,6 +270,33 @@ class IdiggerUtil(object):
             return cls.ENUM_ORDER_PAGE
         else:
             return None
+
+    @classmethod
+    def conversionpage_or_conversionbutton(cls, query_params):
+        """
+        Args:
+            query_params: A dict returned form urlparse.parse_qs().
+                E.g., { 'ecm': ['````````````'] }
+
+        Returns:
+            ENUM_CONVERSION_PAGE or
+            ENUM_CONVERSION_BUTTON or
+            None
+        """
+
+        # event category
+        ec = query_params['ec'][0] if query_params.has_key('ec') else None
+        if ec not in ('1', '$conversion'): return None
+
+        ea = query_params['ea'][0] if query_params.has_key('ea') else None  # event action
+        el = query_params['el'][0] if query_params.has_key('el') else None  # event label
+        ev = query_params['ev'][0] if query_params.has_key('ev') else None  # event value
+        if not (ea or el or ev): return None
+
+        ctd = query_params['ctd'][0] if query_params.has_key('ctd') else None
+        if not ctd: return (cls.PAGE_TYPES[cls.ENUM_CONVERSION_BUTTON], )
+
+        return None
 
     @classmethod
     def get_page_kinds(cls, rawlog):
@@ -541,6 +619,38 @@ def _unit_test_orderpage_or_paidpage():
     }
     assert IdiggerUtil.orderpage_or_paidpage(q) == None
 
+def _unit_test_parse_qs():
+    # 0
+    qs = 'k1=v1&k2=v2'
+    r = IdiggerUtil.parse_qs(qs)
+    assert r['k1'] == ['v1'] and r['k2'] == ['v2']
+
+    # 1
+    qs = 'k1|v1;k2|v2'
+    r = IdiggerUtil.parse_qs(qs, ';', '|')
+    assert r['k1'] == ['v1'] and r['k2'] == ['v2']
+
+    # 2
+    qs = 'k1|v1;k2|v2;k1|v1.1;k2|v2.1'
+    r = IdiggerUtil.parse_qs(qs, ';', '|')
+    assert r['k1'] == ['v1', 'v1.1'] and r['k2'] == ['v2', 'v2.1']
+
+    # 3
+    qs = 'k1|v1;k2|v2;k3|'
+    r = IdiggerUtil.parse_qs(qs, ';', '|')
+    assert r['k1'] == ['v1'] and r['k2'] == ['v2'] and ('k3' not in r)
+
+    # 4
+    qs = 'k1|v1;k2|v2;k3|;k4'
+    r = IdiggerUtil.parse_qs(qs, ';', '|', True)
+    assert (r['k1'] == ['v1'] and r['k2'] == ['v2'] and r['k3'] == [''] and
+            r['k4'] == [''])
+
+    # 5
+    qs = '|v1;;|'
+    r = IdiggerUtil.parse_qs(qs, ';', '|', True)
+    assert r[''] == ['v1', '']
+
 
 def _unit_test():
     _unit_test_get_http_query_section()
@@ -550,5 +660,6 @@ def _unit_test():
     _unit_test_get_skuid_list_in_shopcart()
     _unit_test_get_splited_item()
     _unit_test_orderpage_or_paidpage()
+    _unit_test_parse_qs()
 
 _unit_test()
