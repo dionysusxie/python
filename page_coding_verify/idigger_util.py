@@ -4,6 +4,21 @@
 import urllib
 import urlparse
 
+"""
+线上 yougou 的一个订单提交页面(未付款)产生的 idigger.allyes.com 的代码：
+
+完整URL:
+http://idigger.allyes.com/main/adftrack?db=mso&v=3.0&r=2136346819&hn=www.yougou.com&lt=i&plf=Mac%20OS%20X&cs=UTF-8&ul=zh-cn&bt=Safari&bs=1280x800,24-bit,16.0%20r0,1&pt=%E8%AE%A2%E5%8D%95%E6%8F%90%E4%BA%A4%E6%88%90%E5%8A%9F%20-%20%E4%BC%98%E8%B4%AD%E7%BD%91%E4%B8%8A%E9%9E%8B%E5%9F%8E%20-%20%E4%B9%B0%E5%A5%BD%E9%9E%8B%EF%BC%8C%E4%B8%8A%E4%BC%98%E8%B4%AD&rf=http%3A%2F%2Fwww.yougou.com%2FcontinueOrder.jhtml%3FtradeCurrency%3DCNY&pu=%2Fpay%2FpayOnline.sc%3FonlinePayStyleNo%3D1001%26uname%3D2BF29E89E039D2E485326C5C1CA806E7%26skuid%3D99967948%26orderNo%3DA641231151522&ncf=0&tag=&ao=T-000436-01&tsuid=&tsoid=&tst=&tkv=&ecm=4ec3bcaba90844cc86f0ce4f6badee26%60%60A641231151522%60199.00%6099967948%60%60%60%60%60%60%60%601%60&ayf=&cct=1419846516&sc=34&nv=0
+
+查询字符串：
+db=mso&v=3.0&r=2136346819&hn=www.yougou.com&lt=i&plf=Mac%20OS%20X&cs=UTF-8&ul=zh-cn&bt=Safari&bs=1280x800,24-bit,16.0%20r0,1&pt=%E8%AE%A2%E5%8D%95%E6%8F%90%E4%BA%A4%E6%88%90%E5%8A%9F%20-%20%E4%BC%98%E8%B4%AD%E7%BD%91%E4%B8%8A%E9%9E%8B%E5%9F%8E%20-%20%E4%B9%B0%E5%A5%BD%E9%9E%8B%EF%BC%8C%E4%B8%8A%E4%BC%98%E8%B4%AD&rf=http%3A%2F%2Fwww.yougou.com%2FcontinueOrder.jhtml%3FtradeCurrency%3DCNY&pu=%2Fpay%2FpayOnline.sc%3FonlinePayStyleNo%3D1001%26uname%3D2BF29E89E039D2E485326C5C1CA806E7%26skuid%3D99967948%26orderNo%3DA641231151522&ncf=0&tag=&ao=T-000436-01&tsuid=&tsoid=&tst=&tkv=&ecm=4ec3bcaba90844cc86f0ce4f6badee26%60%60A641231151522%60199.00%6099967948%60%60%60%60%60%60%60%601%60&ayf=&cct=1419846516&sc=34&nv=0
+
+pu:
+/pay/payOnline.sc?onlinePayStyleNo=1001&uname=2BF29E89E039D2E485326C5C1CA806E7&skuid=99967948&orderNo=A641231151522
+
+ecm:
+4ec3bcaba90844cc86f0ce4f6badee26``A641231151522`199.00`99967948````````1`
+"""
 
 class IdiggerUtil(object):
 
@@ -179,22 +194,31 @@ class IdiggerUtil(object):
         return tuple(skuid_list)
 
     @classmethod
-    def is_paid_page(cls, query_params):
+    def orderpage_or_paidpage(cls, query_params):
         """
         Args:
             query_params: A dict returned form urlparse.parse_qs().
                 E.g., { 'ecm': ['````````````'] }
 
         Returns:
-            True or false.
+            ENUM_ORDER_PAGE or ENUM_PAID_PAGE or None
         """
 
-        if not query_params: return False
-        if not query_params.has_key('ecm'): return False
+        if not query_params: return None
+        if not query_params.has_key('ecm'): return None
 
         ecm = query_params['ecm'][0]
+
         orderstatus = cls.get_splited_item(ecm, 12, '`', True)
-        return orderstatus in ('2', '3')
+        if orderstatus in ('2', '3'):
+            return cls.ENUM_PAID_PAGE
+
+        orderid = cls.get_splited_item(ecm, 2, '`')
+        ordermoney = cls.get_splited_item(ecm, 3, '`')
+        if orderid and ordermoney:
+            return cls.ENUM_ORDER_PAGE
+        else:
+            return None
 
     @classmethod
     def get_page_kinds(cls, rawlog):
@@ -229,11 +253,10 @@ class IdiggerUtil(object):
         pids_in_cart = cls.get_skuid_list_in_shopcart(url)
         if pids_in_cart: return (cls.PAGE_TYPES[cls.ENUM_CART_PAGE], )
 
-        # ENUM_PAID_PAGE = 4
-        if cls.is_paid_page(query_params=query_params):
-            return (cls.PAGE_TYPES[cls.ENUM_PAID_PAGE], )
-
-        # ENUM_ORDER_PAGE = 3
+        # ENUM_ORDER_PAGE = 3  &  ENUM_PAID_PAGE = 4
+        r = cls.orderpage_or_paidpage(query_params=query_params)
+        if r in (cls.ENUM_ORDER_PAGE, cls.ENUM_PAID_PAGE):
+            return (cls.PAGE_TYPES[r], )
 
         # ENUM_CONVERSION_PAGE = 5  # conversionpage
 
@@ -457,36 +480,66 @@ def _unit_test_get_splited_item():
     assert (IdiggerUtil.get_splited_item(src_str, 0, '|') == 'abcdefg' and
             IdiggerUtil.get_splited_item(src_str, 1, '|') == None)
 
-def _unit_test_is_paid_page():
+def _unit_test_orderpage_or_paidpage():
     # 0
     q = {
          'ecm': ['````````````1`'],
     }
-    assert IdiggerUtil.is_paid_page(q) == False
+    assert IdiggerUtil.orderpage_or_paidpage(q) == None
 
     # 1
     q = {
          'ecm': ['````````````2`'],
     }
-    assert IdiggerUtil.is_paid_page(q) == True
+    assert IdiggerUtil.orderpage_or_paidpage(q) == IdiggerUtil.ENUM_PAID_PAGE
 
     # 2
     q = {
          'ecm': ['````````````3`'],
     }
-    assert IdiggerUtil.is_paid_page(q) == True
+    assert IdiggerUtil.orderpage_or_paidpage(q) == IdiggerUtil.ENUM_PAID_PAGE
 
     # 3
     q = {
          'ecm': ['```````'],
     }
-    assert IdiggerUtil.is_paid_page(q) == False
+    assert IdiggerUtil.orderpage_or_paidpage(q) == None
 
     # 4
     q = {
          'ecmx': ['````````````3`'],
     }
-    assert IdiggerUtil.is_paid_page(q) == False
+    assert IdiggerUtil.orderpage_or_paidpage(q) == None
+
+    # 5
+    q = {
+         'ecm': ["4ec3bcaba90844cc86f0ce4f6badee26``A641231151522`199.00`99967948````````1`"],
+    }
+    assert IdiggerUtil.orderpage_or_paidpage(q) == IdiggerUtil.ENUM_ORDER_PAGE
+
+    # 6
+    q = {
+         'ecm': ["4ec3bcaba90844cc86f0ce4f6badee26``A641231151522`199.00`99967948````````2`"],
+    }
+    assert IdiggerUtil.orderpage_or_paidpage(q) == IdiggerUtil.ENUM_PAID_PAGE
+
+    # 7
+    q = {
+         'ecm': ["4ec3bcaba90844cc86f0ce4f6badee26``A641231151522`199.00`99967948````````3`"],
+    }
+    assert IdiggerUtil.orderpage_or_paidpage(q) == IdiggerUtil.ENUM_PAID_PAGE
+
+    # 8
+    q = {
+         'ecm': ["4ec3bcaba90844cc86f0ce4f6badee26``A641231151522``99967948````````1`"],
+    }
+    assert IdiggerUtil.orderpage_or_paidpage(q) == None
+
+    # 9
+    q = {
+         'ecm': ["4ec3bcaba90844cc86f0ce4f6badee26```199.00`99967948````````1`"],
+    }
+    assert IdiggerUtil.orderpage_or_paidpage(q) == None
 
 
 def _unit_test():
@@ -496,6 +549,6 @@ def _unit_test():
     _unit_test_get_product_codes()
     _unit_test_get_skuid_list_in_shopcart()
     _unit_test_get_splited_item()
-    _unit_test_is_paid_page()
+    _unit_test_orderpage_or_paidpage()
 
 _unit_test()
