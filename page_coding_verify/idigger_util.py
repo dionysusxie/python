@@ -180,18 +180,20 @@ class IdiggerUtil(object):
 
     @classmethod
     def is_paid_page(cls, query_params):
-        """Is this url a paid page?
+        """
         Args:
-            url: A request url.
+            query_params: A dict returned form urlparse.parse_qs().
+                E.g., { 'ecm': ['````````````'] }
 
         Returns:
             True or false.
         """
 
+        if not query_params: return False
         if not query_params.has_key('ecm'): return False
 
         ecm = query_params['ecm'][0]
-        orderstatus = cls.get_splited_item(ecm, '`', 12, True)
+        orderstatus = cls.get_splited_item(ecm, 12, '`', True)
         return orderstatus in ('2', '3')
 
     @classmethod
@@ -208,9 +210,8 @@ class IdiggerUtil(object):
             None
         """
 
-        url = rawlog.request_url
-
         try:
+            url = rawlog.request_url
             parsed_url = urlparse.urlparse(url)
             query_params = urlparse.parse_qs(parsed_url.query)
             if not query_params: return ()
@@ -221,16 +222,18 @@ class IdiggerUtil(object):
         if not site_code: return ()  # empty tuple
 
         # ENUM_SKU_PAGE = 1
-        pids = cls.get_product_codes(rawlog.request_url)
+        pids = cls.get_product_codes(url)
         if pids: return (cls.PAGE_TYPES[cls.ENUM_SKU_PAGE], )
 
         # ENUM_CART_PAGE = 2
-        pids_in_cart = cls.get_skuid_list_in_shopcart(rawlog.request_url)
+        pids_in_cart = cls.get_skuid_list_in_shopcart(url)
         if pids_in_cart: return (cls.PAGE_TYPES[cls.ENUM_CART_PAGE], )
 
-        # ENUM_ORDER_PAGE = 3  # orderpage
+        # ENUM_PAID_PAGE = 4
+        if cls.is_paid_page(query_params=query_params):
+            return (cls.PAGE_TYPES[cls.ENUM_PAID_PAGE], )
 
-        # ENUM_PAID_PAGE = 4  # paidpage
+        # ENUM_ORDER_PAGE = 3
 
         # ENUM_CONVERSION_PAGE = 5  # conversionpage
 
@@ -458,6 +461,38 @@ def _unit_test_get_splited_item():
             IdiggerUtil.get_splited_item(src_str, 1, '|') == None
             ), 'IdiggerUtil.get_splited_item(): Unit test failed: #3'
 
+def _unit_test_is_paid_page():
+    # 0
+    q = {
+         'ecm': ['````````````1`'],
+    }
+    assert IdiggerUtil.is_paid_page(q) == False
+
+    # 1
+    q = {
+         'ecm': ['````````````2`'],
+    }
+    assert IdiggerUtil.is_paid_page(q) == True
+
+    # 2
+    q = {
+         'ecm': ['````````````3`'],
+    }
+    assert IdiggerUtil.is_paid_page(q) == True
+
+    # 3
+    q = {
+         'ecm': ['```````'],
+    }
+    assert IdiggerUtil.is_paid_page(q) == False
+
+    # 4
+    q = {
+         'ecmx': ['````````````3`'],
+    }
+    assert IdiggerUtil.is_paid_page(q) == False
+
+
 def _unit_test():
     _unit_test_get_http_query_section()
     _unit_test_get_site_code()
@@ -465,5 +500,6 @@ def _unit_test():
     _unit_test_get_product_codes()
     _unit_test_get_skuid_list_in_shopcart()
     _unit_test_get_splited_item()
+    _unit_test_is_paid_page()
 
 _unit_test()
