@@ -29,6 +29,32 @@ class IdiggerUtil(object):
                   'eventbutton',  # 8
     )
 
+    assert len(PAGE_TYPES) == ENUM_MAX
+
+    @classmethod
+    def get_splited_item(cls, src_str, item_index, sep=None, unquote=False):
+        """
+        Args:
+            src_str: A string, the source string to be splited.
+            item_index: A integer, item index wanted; can be negative.
+            sep: A string, the string used to split the 'src_str'.
+            unquote: A bool value.
+
+        Returns:
+            A string;
+            Or None if 'item_index' out of index.
+        """
+
+        item_list = src_str.split(sep)
+        if not item_list: return None
+        try:
+            if unquote:
+                return urllib.unquote(item_list[item_index])
+            else:
+                return item_list[item_index]
+        except IndexError:
+            return None
+
     @classmethod
     def get_http_query_section(cls, url, query_key):
         """
@@ -56,8 +82,18 @@ class IdiggerUtil(object):
             return None
 
     @classmethod
-    def get_site_code(cls, url):
-        return cls.get_http_query_section(url, 'ao')
+    def get_site_code(cls, url=None, query_params=None):
+        """Return a string or None"""
+        TXT_AO = 'ao'
+        if url:
+            return cls.get_http_query_section(url, TXT_AO)
+        elif query_params:
+            if query_params.has_key(TXT_AO):
+                return query_params[TXT_AO][0]
+            else:
+                return None
+        else:
+            assert False
 
     @classmethod
     def get_page_url(cls, url):
@@ -143,6 +179,22 @@ class IdiggerUtil(object):
         return tuple(skuid_list)
 
     @classmethod
+    def is_paid_page(cls, query_params):
+        """Is this url a paid page?
+        Args:
+            url: A request url.
+
+        Returns:
+            True or false.
+        """
+
+        if not query_params.has_key('ecm'): return False
+
+        ecm = query_params['ecm'][0]
+        orderstatus = cls.get_splited_item(ecm, '`', 12, True)
+        return orderstatus in ('2', '3')
+
+    @classmethod
     def get_page_kinds(cls, rawlog):
         """Get page kinds.
         Args:
@@ -156,7 +208,16 @@ class IdiggerUtil(object):
             None
         """
 
-        site_code = cls.get_site_code(rawlog.request_url)
+        url = rawlog.request_url
+
+        try:
+            parsed_url = urlparse.urlparse(url)
+            query_params = urlparse.parse_qs(parsed_url.query)
+            if not query_params: return ()
+        except:
+            return ()
+
+        site_code = cls.get_site_code(query_params=query_params)
         if not site_code: return ()  # empty tuple
 
         # ENUM_SKU_PAGE = 1
@@ -210,6 +271,12 @@ def _unit_test_get_site_code():
 
     if IdiggerUtil.get_site_code(url_no_sitecode + '&ao=T-000032-2') != 'T-000032-2':
         assert False, 'IdiggerUtil.get_site_code(): Unit test failed: #1'
+
+    query_params = {
+        'ao': ['234']
+    }
+    if IdiggerUtil.get_site_code(query_params=query_params) != '234':
+        assert False, 'IdiggerUtil.get_site_code(): Unit test failed: #2'
 
 def _unit_test_get_page_url():
     url = 'http://idigger.allyes.com/main/adftrack?db=mso&v=3.0&r=1315018823&hn=www.yougou.com&lt=i&plf=Windows%20NT%205.1&cs=UTF-8&ul=zh-cn&bt=Chrome&bs=1152x864,24-bit,11.6%20r602,1&pt=%E3%80%90%E6%96%B0%E7%99%BE%E4%BC%A6New%20Balance%20ML515%20%E8%93%9D%E8%89%B2%E3%80%91New%20Balance%E6%96%B0%E7%99%BE%E4%BC%A6%202014%E5%B9%B4%E6%96%B0%E6%AC%BE%E7%94%B7%E5%AD%90%E5%A4%8D%E5%8F%A4%E9%9E%8BML515OB&rf=http%3A%2F%2Fwww.yougou.com%2Ff-newbalance-0-0-1-1.html&pu=%2Fc-newbalance%2Fsku-ml515-100061692.shtml&ncf=0&tag=&ao=T-000436-01&tsuid=&tsoid=&tst=&tkv=&ecm=66364734346e41f7aa4eef4af5749079%60%60%60%60%60%60100061692%60%60%60%60%60%60%60&ayf=&cct=1418359803&sc=690&nv=0'
@@ -354,11 +421,49 @@ def _unit_test_get_skuid_list_in_shopcart():
     else:
         assert False, 'get_skuid_list_in_shopcart(): Unit test failed: #7'
 
+def _unit_test_get_splited_item():
+    # 0
+    src_str = 'a b c\td\ne\t\n f'
+    assert (IdiggerUtil.get_splited_item(src_str, 0) == 'a' and
+            IdiggerUtil.get_splited_item(src_str, 1) == 'b' and
+            IdiggerUtil.get_splited_item(src_str, 2) == 'c' and
+            IdiggerUtil.get_splited_item(src_str, 3) == 'd' and
+            IdiggerUtil.get_splited_item(src_str, 4) == 'e' and
+            IdiggerUtil.get_splited_item(src_str, 5) == 'f' and
+            IdiggerUtil.get_splited_item(src_str, 6) == None and
+            IdiggerUtil.get_splited_item(src_str, -1) == 'f'
+            ), 'IdiggerUtil.get_splited_item(): Unit test failed: #0'
+
+    # 1
+    src_str = "`a%7Cb`c%7Cd`"
+    assert (IdiggerUtil.get_splited_item(src_str, 0, '`') == '' and
+            IdiggerUtil.get_splited_item(src_str, 1, '`') == 'a%7Cb' and
+            IdiggerUtil.get_splited_item(src_str, 2, '`') == 'c%7Cd' and
+            IdiggerUtil.get_splited_item(src_str, 3, '`') == '' and
+            IdiggerUtil.get_splited_item(src_str, 4, '`') == None
+            ), 'IdiggerUtil.get_splited_item(): Unit test failed: #1'
+
+    # 2
+    src_str = "`a%7Cb`c%7Cd`"
+    assert (IdiggerUtil.get_splited_item(src_str, 0, '`', True) == '' and
+            IdiggerUtil.get_splited_item(src_str, 1, '`', True) == 'a|b' and
+            IdiggerUtil.get_splited_item(src_str, 2, '`', True) == 'c|d' and
+            IdiggerUtil.get_splited_item(src_str, 3, '`', True) == '' and
+            IdiggerUtil.get_splited_item(src_str, 4, '`', True) == None
+            ), 'IdiggerUtil.get_splited_item(): Unit test failed: #2'
+
+    # 3
+    src_str = 'abcdefg'
+    assert (IdiggerUtil.get_splited_item(src_str, 0, '|') == 'abcdefg' and
+            IdiggerUtil.get_splited_item(src_str, 1, '|') == None
+            ), 'IdiggerUtil.get_splited_item(): Unit test failed: #3'
+
 def _unit_test():
     _unit_test_get_http_query_section()
     _unit_test_get_site_code()
     _unit_test_get_page_url()
     _unit_test_get_product_codes()
     _unit_test_get_skuid_list_in_shopcart()
+    _unit_test_get_splited_item()
 
 _unit_test()
