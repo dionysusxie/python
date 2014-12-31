@@ -434,8 +434,7 @@ def _unit_test_get_splited_item():
             IdiggerUtil.get_splited_item(src_str, 4) == 'e' and
             IdiggerUtil.get_splited_item(src_str, 5) == 'f' and
             IdiggerUtil.get_splited_item(src_str, 6) == None and
-            IdiggerUtil.get_splited_item(src_str, -1) == 'f'
-            ), 'IdiggerUtil.get_splited_item(): Unit test failed: #0'
+            IdiggerUtil.get_splited_item(src_str, -1) == 'f')
 
     # 1
     src_str = "`a%7Cb`c%7Cd`"
@@ -443,8 +442,7 @@ def _unit_test_get_splited_item():
             IdiggerUtil.get_splited_item(src_str, 1, '`') == 'a%7Cb' and
             IdiggerUtil.get_splited_item(src_str, 2, '`') == 'c%7Cd' and
             IdiggerUtil.get_splited_item(src_str, 3, '`') == '' and
-            IdiggerUtil.get_splited_item(src_str, 4, '`') == None
-            ), 'IdiggerUtil.get_splited_item(): Unit test failed: #1'
+            IdiggerUtil.get_splited_item(src_str, 4, '`') == None)
 
     # 2
     src_str = "`a%7Cb`c%7Cd`"
@@ -452,14 +450,12 @@ def _unit_test_get_splited_item():
             IdiggerUtil.get_splited_item(src_str, 1, '`', True) == 'a|b' and
             IdiggerUtil.get_splited_item(src_str, 2, '`', True) == 'c|d' and
             IdiggerUtil.get_splited_item(src_str, 3, '`', True) == '' and
-            IdiggerUtil.get_splited_item(src_str, 4, '`', True) == None
-            ), 'IdiggerUtil.get_splited_item(): Unit test failed: #2'
+            IdiggerUtil.get_splited_item(src_str, 4, '`', True) == None)
 
     # 3
     src_str = 'abcdefg'
     assert (IdiggerUtil.get_splited_item(src_str, 0, '|') == 'abcdefg' and
-            IdiggerUtil.get_splited_item(src_str, 1, '|') == None
-            ), 'IdiggerUtil.get_splited_item(): Unit test failed: #3'
+            IdiggerUtil.get_splited_item(src_str, 1, '|') == None)
 
 def _unit_test_is_paid_page():
     # 0
