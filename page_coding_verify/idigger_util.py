@@ -322,10 +322,10 @@ class IdiggerUtil(object):
         return cls.ENUM_CONVERSION_BUTTON
 
     @classmethod
-    def get_page_kinds(cls, rawlog):
+    def get_page_kinds(cls, url):
         """Get page kinds.
         Args:
-            rawlog: A log of kind RawLog.
+            url: request_url of a RawLog
 
         Returns:
             A tuple contains the page-kinds of input rawlog;
@@ -336,7 +336,6 @@ class IdiggerUtil(object):
         """
 
         try:
-            url = rawlog.request_url
             parsed_url = urlparse.urlparse(url)
             query_params = urlparse.parse_qs(parsed_url.query)
             if not query_params: return ()
@@ -356,12 +355,13 @@ class IdiggerUtil(object):
 
         # ENUM_ORDER_PAGE = 3  &  ENUM_PAID_PAGE = 4
         r = cls.orderpage_or_paidpage(query_params=query_params)
-        if r in (cls.ENUM_ORDER_PAGE, cls.ENUM_PAID_PAGE):
+        if r is not None:
             return (cls.PAGE_TYPES[r], )
 
-        # ENUM_CONVERSION_PAGE = 5  # conversionpage
-
-        # ENUM_CONVERSION_BUTTON = 6  # conversionbutton
+        # ENUM_CONVERSION_PAGE = 5  &  ENUM_CONVERSION_BUTTON = 6
+        r = cls.conversionpage_or_conversionbutton(query_params)
+        if r is not None:
+            return (cls.PAGE_TYPES[r], )
 
         # ENUM_EVENT_PAGE = 7  # eventpage
 

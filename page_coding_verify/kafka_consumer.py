@@ -162,7 +162,7 @@ class PageCodingVerifier(object):
 
         page_url = IdiggerUtil.get_page_url(rawlog.request_url)
         if not page_url: return
-        if not self.filters.has_key(page_url): return
+        if page_url not in self.filters: return
 
         update_timestamps = self.filters[page_url][self.TXT_UPDATE_TIMESTAMPS]
 
@@ -170,7 +170,7 @@ class PageCodingVerifier(object):
                                      self.TXT_LAST_ENCOUNTERED,
                                      rawlog.timestamp)
 
-        page_kinds = IdiggerUtil.get_page_kinds(rawlog)
+        page_kinds = IdiggerUtil.get_page_kinds(rawlog.request_url)
         for kind in page_kinds:
             self._update_dict_if_greater(update_timestamps, kind,
                                          rawlog.timestamp)
