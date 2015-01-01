@@ -653,6 +653,8 @@ def _unit_test_parse_qs():
 
 
 def _unit_test():
+    print '*** Idigger Unit Test Begin'
+
     _unit_test_get_http_query_section()
     _unit_test_get_site_code()
     _unit_test_get_page_url()
@@ -661,5 +663,7 @@ def _unit_test():
     _unit_test_get_splited_item()
     _unit_test_orderpage_or_paidpage()
     _unit_test_parse_qs()
+
+    print '*** Idigger Unit Test End'
 
 _unit_test()
