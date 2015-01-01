@@ -272,6 +272,21 @@ class IdiggerUtil(object):
             return None
 
     @classmethod
+    def get_query_param_value(cls, query_params, key):
+        """
+        Args:
+            query_params: A dict returned form urlparse.parse_qs().
+                E.g., { 'ecm': ['````````````'] }
+
+        Returns: query_params[key][0] or None if there is any exception.
+        """
+
+        try:
+            return query_params[key][0]
+        except:
+            return None
+
+    @classmethod
     def conversionpage_or_conversionbutton(cls, query_params):
         """
         Args:
@@ -284,19 +299,27 @@ class IdiggerUtil(object):
             None
         """
 
-        # event category
-        ec = query_params['ec'][0] if query_params.has_key('ec') else None
-        if ec not in ('1', '$conversion'): return None
+        if 'ec' in query_params:
+            if '1' in query_params['ec'] or '$conversion' in query_params['ec']:
+                pass
+            else:
+                return None
+        else:
+            return None
 
-        ea = query_params['ea'][0] if query_params.has_key('ea') else None  # event action
-        el = query_params['el'][0] if query_params.has_key('el') else None  # event label
-        ev = query_params['ev'][0] if query_params.has_key('ev') else None  # event value
+        ea = cls.get_query_param_value(query_params, 'ea')  # event action
+        el = cls.get_query_param_value(query_params, 'el')  # event label
+        ev = cls.get_query_param_value(query_params, 'ev')  # event value
         if not (ea or el or ev): return None
 
-        ctd = query_params['ctd'][0] if query_params.has_key('ctd') else None
-        if not ctd: return (cls.PAGE_TYPES[cls.ENUM_CONVERSION_BUTTON], )
+        ctd = cls.get_query_param_value(query_params, 'ctd')
+        if ctd:
+            ctd_key_values = cls.parse_qs(ctd, ';', '|')
+            if (('convpage' in ctd_key_values) and
+                ('1' in ctd_key_values['convpage'])):
+                return cls.ENUM_CONVERSION_PAGE
 
-        return None
+        return cls.ENUM_CONVERSION_BUTTON
 
     @classmethod
     def get_page_kinds(cls, rawlog):
@@ -651,6 +674,51 @@ def _unit_test_parse_qs():
     r = IdiggerUtil.parse_qs(qs, ';', '|', True)
     assert r[''] == ['v1', '']
 
+def _unit_test_conversionpage_or_conversionbutton():
+    # 0
+    q = {
+         'ec': ['1'],
+         'ea': ['xxx'],
+         'ctd': ['convpage|1;convtype|xxx'],
+    }
+    assert (IdiggerUtil.conversionpage_or_conversionbutton(q) ==
+            IdiggerUtil.ENUM_CONVERSION_PAGE)
+
+    # 1
+    q = {
+         'ec': ['2', '$conversion'],
+         'ea': ['xxx'],
+         'ctd': ['convpage|1;convtype|xxx'],
+    }
+    assert (IdiggerUtil.conversionpage_or_conversionbutton(q) ==
+            IdiggerUtil.ENUM_CONVERSION_PAGE)
+
+    # 2
+    q = {
+         'ec': ['2', '$conversion'],
+         'ea': ['xxx'],
+         'ctd': ['convpage|2;convtype|xxx'],
+    }
+    assert (IdiggerUtil.conversionpage_or_conversionbutton(q) ==
+            IdiggerUtil.ENUM_CONVERSION_BUTTON)
+
+    # 3
+    q = {
+         'ec': ['1'],
+         'ctd': ['convpage|1;convtype|xxx'],
+    }
+    assert IdiggerUtil.conversionpage_or_conversionbutton(q) == None
+
+    # 4
+    q = {
+         'ec': ['2', '$conversion'],
+         'ea': ['xxx'],
+         'el': ['xxx'],
+         'ev': ['xxx'],
+         'ctd': ['convpage|2;convtype|xxx;convpage|1'],
+    }
+    assert (IdiggerUtil.conversionpage_or_conversionbutton(q) ==
+            IdiggerUtil.ENUM_CONVERSION_PAGE)
 
 def _unit_test():
     print '*** Idigger Unit Test Begin'
@@ -663,6 +731,7 @@ def _unit_test():
     _unit_test_get_splited_item()
     _unit_test_orderpage_or_paidpage()
     _unit_test_parse_qs()
+    _unit_test_conversionpage_or_conversionbutton()
 
     print '*** Idigger Unit Test End'
 
