@@ -22,12 +22,12 @@ CONSUME_FROM_HEAD = 0
 CONSUME_FROM_CURRENT = 1
 CONSUME_FROM_TAIL = 2
 
-# g_brokers_addr = 'localhost:9092'
-# g_topic = 'test'
-g_brokers_addr = ('kk001.karl.kafka.allyes.com:9092,'
-                  'kk002.karl.kafka.allyes.com:9092,'
-                  'kk003.karl.kafka.allyes.com:9092')
-g_topic = 'idigger'
+g_brokers_addr = 'localhost:9092'
+g_topic = 'test'
+# g_brokers_addr = ('kk001.karl.kafka.allyes.com:9092,'
+#                   'kk002.karl.kafka.allyes.com:9092,'
+#                   'kk003.karl.kafka.allyes.com:9092')
+# g_topic = 'idigger'
 
 g_consumer_group = 'page_code_verify_001'
 g_consume_init_position = CONSUME_FROM_TAIL
@@ -98,7 +98,7 @@ class PageCodingVerifier(object):
             None
 
         Raises:
-            ActionParamError: Will be raised if 'new_filter' contains wrong
+            ActionParamError will be raised if 'new_filter' contains wrong
                 content.
         """
 
@@ -128,7 +128,44 @@ class PageCodingVerifier(object):
         print self.filters
 
     def query(self, query_obj):
-        pass
+        """Do a query with the specific condition.
+
+        Args:
+            query_obj: A dict; E.g., {"request_url":"abc"}
+
+        Returns:
+            A dict. E.g.,
+            {
+                'succeed': False,
+                'error': 'some error',
+            }
+            or
+            {
+                'succeed': True,
+                'last_encountered': 123,
+                ...
+            }
+        """
+
+        try:
+            query_obj["request_url"].lower()  # make sure it's a string
+            key = query_obj["request_url"]
+        except:
+            return {
+                'succeed': False,
+                'error': 'Invalid param: %s' % json.dumps(query_obj),
+            }
+
+        if key not in self.filters:
+            return {
+                'succeed': False,
+                'error': 'Not registed: %s' % key,
+            }
+
+        r = {}
+        r.update(self.filters[key][self.TXT_UPDATE_TIMESTAMPS])
+        r['succeed'] = True
+        return r
 
     def periodic_check(self, time_now):
         """check every 1 minutes to delete dead filters"""
@@ -205,18 +242,7 @@ def handle_web_requests(time_now, read_queue, write_queue, page_verifier):
             ret['succeed'] = False
             ret['error'] = "Invalid param: %s" % json.dumps(action_param)
     elif action == ACTION_QUERY:
-        time_now_int = int(time_now)
-        ret['succeed'] = True
-        ret['last_encountered'] = time_now_int
-        ret['sitepage'] = time_now_int  # => '1'
-        ret['skupage'] = time_now_int   # => '2'
-        ret['cartpage'] = 0             # => '3'
-        ret['conversionpage'] = 0       # => '4'
-        ret['orderpage'] = 0            # => '5'
-        ret['paidpage'] = time_now_int  # => '6'
-        ret['conversionbutton'] = 0     # => '7'
-        ret['eventpage'] = 0            # => '8'
-        ret['eventbutton'] = 0          # => '9'
+        ret = page_verifier.query(action_param)
     else:
         assert False
 
