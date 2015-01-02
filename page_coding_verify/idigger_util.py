@@ -170,6 +170,7 @@ class IdiggerUtil(object):
 
         pu = cls.get_http_query_section(url, 'pu')
         if not pu: return None
+        pu = cls.get_splited_item(pu, 0, '?')
 
         return hn + pu
 
@@ -436,9 +437,14 @@ def _unit_test_get_site_code():
         assert False, 'IdiggerUtil.get_site_code(): Unit test failed: #2'
 
 def _unit_test_get_page_url():
+    # 0
     url = 'http://idigger.allyes.com/main/adftrack?db=mso&v=3.0&r=1315018823&hn=www.yougou.com&lt=i&plf=Windows%20NT%205.1&cs=UTF-8&ul=zh-cn&bt=Chrome&bs=1152x864,24-bit,11.6%20r602,1&pt=%E3%80%90%E6%96%B0%E7%99%BE%E4%BC%A6New%20Balance%20ML515%20%E8%93%9D%E8%89%B2%E3%80%91New%20Balance%E6%96%B0%E7%99%BE%E4%BC%A6%202014%E5%B9%B4%E6%96%B0%E6%AC%BE%E7%94%B7%E5%AD%90%E5%A4%8D%E5%8F%A4%E9%9E%8BML515OB&rf=http%3A%2F%2Fwww.yougou.com%2Ff-newbalance-0-0-1-1.html&pu=%2Fc-newbalance%2Fsku-ml515-100061692.shtml&ncf=0&tag=&ao=T-000436-01&tsuid=&tsoid=&tst=&tkv=&ecm=66364734346e41f7aa4eef4af5749079%60%60%60%60%60%60100061692%60%60%60%60%60%60%60&ayf=&cct=1418359803&sc=690&nv=0'
     if IdiggerUtil.get_page_url(url) != 'www.yougou.com/c-newbalance/sku-ml515-100061692.shtml':
         assert False, 'IdiggerUtil.get_page_url(): Unit test failed: #0'
+
+    # 1
+    url = 'http://idigger.allyes.com/main/adftrack?db=mso&v=3.0&r=2136346819&hn=www.yougou.com&lt=i&plf=Mac%20OS%20X&cs=UTF-8&ul=zh-cn&bt=Safari&bs=1280x800,24-bit,16.0%20r0,1&pt=%E8%AE%A2%E5%8D%95%E6%8F%90%E4%BA%A4%E6%88%90%E5%8A%9F%20-%20%E4%BC%98%E8%B4%AD%E7%BD%91%E4%B8%8A%E9%9E%8B%E5%9F%8E%20-%20%E4%B9%B0%E5%A5%BD%E9%9E%8B%EF%BC%8C%E4%B8%8A%E4%BC%98%E8%B4%AD&rf=http%3A%2F%2Fwww.yougou.com%2FcontinueOrder.jhtml%3FtradeCurrency%3DCNY&pu=%2Fpay%2FpayOnline.sc%3FonlinePayStyleNo%3D1001%26uname%3D2BF29E89E039D2E485326C5C1CA806E7%26skuid%3D99967948%26orderNo%3DA641231151522&ncf=0&tag=&ao=T-000436-01&tsuid=&tsoid=&tst=&tkv=&ecm=4ec3bcaba90844cc86f0ce4f6badee26%60%60A641231151522%60199.00%6099967948%60%60%60%60%60%60%60%601%60&ayf=&cct=1419846516&sc=34&nv=0'
+    assert IdiggerUtil.get_page_url(url) == 'www.yougou.com/pay/payOnline.sc'
 
 def _unit_test_get_product_codes():
     test_url_no_ecm = 'http://idigger.allyes.com/main/adftrack?db=mso&v=3.0&r=802029047&hn=www.yougou.com&lt=i&plf=Linux&cs=UTF-8&ul=en-us&bt=Chrome&bs=1366x768,24-bit,11.8%20r800,1&pt=%E3%80%90DickiesDickies%20031581%20%E6%B7%B1%E6%B5%B7%E5%86%9B%E8%93%9D%E6%9D%A1%E7%BA%B9%E3%80%91Dickies%E5%B8%9D%E5%AE%A2%20%E7%94%B7%E5%A3%AB%E6%B7%B1%E6%B5%B7%E5%86%9B%E8%93%9D%E6%9D%A1%E7%BA%B9%E7%89%9B%E4%BB%94%E8%A3%A4%20031581&rf=http%3A%2F%2Fwww.yougou.com%2Ff-dickies-1LTFA-0-0.html&pu=%2Fc-dickies%2Fsku-031581-99919909.shtml&ncf=0&tag=&ao=T-000436-01&tsuid=&tsoid=&tst=&tkv=&ayf=&cct=1382351003&sc=11&nv=1'
