@@ -118,14 +118,12 @@ class PageCodingVerifier(object):
             time.time() + self.filter_life_time_in_minuter * 60)
 
         # initialize updating-timestamps
-        if not page_info.has_key(self.TXT_UPDATE_TIMESTAMPS):
+        if self.TXT_UPDATE_TIMESTAMPS not in page_info:
             page_info[self.TXT_UPDATE_TIMESTAMPS] = {}
             page_update_timestamps = page_info[self.TXT_UPDATE_TIMESTAMPS]
             page_update_timestamps[self.TXT_LAST_ENCOUNTERED] = 0
             for page_type in IdiggerUtil.PAGE_TYPES:
                 page_update_timestamps[page_type] = 0
-
-        print self.filters
 
     def query(self, query_obj):
         """Do a query with the specific condition.
@@ -184,7 +182,6 @@ class PageCodingVerifier(object):
 
     def handle_message(self, msg):
         try:
-            # log_info('Message received - ' + repr(msg))
             log_content = msg.message.value.strip()
             binary_stream = base64.standard_b64decode(log_content)
             rawlog = carpenter_log_pb2.RawLog()
@@ -194,9 +191,6 @@ class PageCodingVerifier(object):
             return
 
     def _handle_rawlog(self, rawlog):
-        print ('*** RawLog db_name: %7s; allyes_id: %25s; request_url: %s' %
-               (rawlog.db_name, rawlog.allyes_id, rawlog.request_url))
-
         page_url = IdiggerUtil.get_page_url(rawlog.request_url)
         if not page_url: return
         if page_url not in self.filters: return
