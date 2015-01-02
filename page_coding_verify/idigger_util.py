@@ -322,6 +322,35 @@ class IdiggerUtil(object):
         return cls.ENUM_CONVERSION_BUTTON
 
     @classmethod
+    def eventpage_or_eventbutton(cls, query_params):
+        """
+        Args:
+            query_params: A dict returned form urlparse.parse_qs().
+                E.g., { 'ecm': ['````````````'] }
+
+        Returns:
+            ENUM_EVENT_PAGE or
+            ENUM_EVENT_BUTTON or
+            None
+        """
+
+        ec = cls.get_query_param_value(query_params, 'ec')
+        ea = cls.get_query_param_value(query_params, 'ea')
+        el = cls.get_query_param_value(query_params, 'el')
+        ev = cls.get_query_param_value(query_params, 'ev')
+        if not (ec or ea or el or ev):
+            return None
+
+        ctd = cls.get_query_param_value(query_params, 'ctd')
+        if ctd:
+            ctd_key_values = cls.parse_qs(ctd, ';', '|')
+            if (('evtpage' in ctd_key_values) and
+                ('1' in ctd_key_values['evtpage'])):
+                return cls.ENUM_EVENT_PAGE
+
+        return cls.ENUM_EVENT_BUTTON
+
+    @classmethod
     def get_page_kinds(cls, url):
         """Get page kinds.
         Args:
@@ -363,9 +392,10 @@ class IdiggerUtil(object):
         if r is not None:
             return (cls.PAGE_TYPES[r], )
 
-        # ENUM_EVENT_PAGE = 7  # eventpage
-
-        # ENUM_EVENT_BUTTON = 8  # eventbutton
+        # ENUM_EVENT_PAGE = 7  &&  ENUM_EVENT_BUTTON = 8
+        r = cls.eventpage_or_eventbutton(query_params)
+        if r is not None:
+            return (cls.PAGE_TYPES[r], )
 
         # ENUM_SITE_PAGE = 0  # sitepage
         return (cls.PAGE_TYPES[cls.ENUM_SITE_PAGE], )
@@ -720,6 +750,49 @@ def _unit_test_conversionpage_or_conversionbutton():
     assert (IdiggerUtil.conversionpage_or_conversionbutton(q) ==
             IdiggerUtil.ENUM_CONVERSION_PAGE)
 
+def _unit_test_eventpage_or_eventbutton():
+    # 0
+    q = {
+         'ec': [''],
+         'ctd': ['evtpage|1;convtype|xxx'],
+    }
+    assert IdiggerUtil.eventpage_or_eventbutton(q) == None
+
+    # 0.5
+    q = {
+         'ec': [' '],
+         'ctd': ['evtpage|1;convtype|xxx'],
+    }
+    assert IdiggerUtil.eventpage_or_eventbutton(q) == IdiggerUtil.ENUM_EVENT_PAGE
+
+    # 1
+    q = {
+         'ea': ['xxx'],
+         'ctd': [';evtpage|1;convtype|xxx'],
+    }
+    assert IdiggerUtil.eventpage_or_eventbutton(q) == IdiggerUtil.ENUM_EVENT_PAGE
+
+    # 2
+    q = {
+         'ea': ['xxx'],
+         'ctd': ['evtpage|2;convtype|xxx'],
+    }
+    assert IdiggerUtil.eventpage_or_eventbutton(q) == IdiggerUtil.ENUM_EVENT_BUTTON
+
+    # 3
+    q = {
+         'ea': ['xxx'],
+         'ev': [''],
+         'ctd': ['convtype|xxx'],
+    }
+    assert IdiggerUtil.eventpage_or_eventbutton(q) == IdiggerUtil.ENUM_EVENT_BUTTON
+
+    # 4
+    q = {
+         'ctd': ['evtpage|1;convtype|xxx'],
+    }
+    assert IdiggerUtil.eventpage_or_eventbutton(q) == None
+
 def _unit_test():
     print '*** Idigger Unit Test Begin'
 
@@ -732,6 +805,7 @@ def _unit_test():
     _unit_test_orderpage_or_paidpage()
     _unit_test_parse_qs()
     _unit_test_conversionpage_or_conversionbutton()
+    _unit_test_eventpage_or_eventbutton()
 
     print '*** Idigger Unit Test End'
 
