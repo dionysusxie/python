@@ -22,12 +22,12 @@ CONSUME_FROM_HEAD = 0
 CONSUME_FROM_CURRENT = 1
 CONSUME_FROM_TAIL = 2
 
-g_brokers_addr = 'localhost:9092'
-g_topic = 'test'
-# g_brokers_addr = ('kk001.karl.kafka.allyes.com:9092,'
-#                   'kk002.karl.kafka.allyes.com:9092,'
-#                   'kk003.karl.kafka.allyes.com:9092')
-# g_topic = 'idigger'
+# g_brokers_addr = 'localhost:9092'
+# g_topic = 'test'
+g_brokers_addr = ('kk001.karl.kafka.allyes.com:9092,'
+                  'kk002.karl.kafka.allyes.com:9092,'
+                  'kk003.karl.kafka.allyes.com:9092')
+g_topic = 'idigger'
 
 g_consumer_group = 'page_code_verify_001'
 g_consume_init_position = CONSUME_FROM_TAIL
@@ -166,7 +166,7 @@ class PageCodingVerifier(object):
         return r
 
     def periodic_check(self, time_now):
-        """check every 1 minutes to delete dead filters"""
+        """ check every 1 minutes to delete dead filters """
 
         if time_now < self.last_check_time:
             self.last_check_time = time_now
@@ -267,8 +267,12 @@ def main():
         # get messages from kafka to handle
 
         pg_verifier = PageCodingVerifier()
+
         last_check_time = time.time()
         CHECK_INTERVAL_IN_SECONDS = 0.05
+
+        last_time_to_check_pending = 0
+        PENDING_CHECK_INTERVAL_IN_SECONDS = 60
 
         while True:
             msg = consumer.get_message(block=True,
@@ -278,11 +282,19 @@ def main():
                 pg_verifier.handle_message(msg)
 
             TIME_NOW = time.time()
+
             if TIME_NOW < last_check_time: last_check_time = TIME_NOW
             if TIME_NOW - last_check_time >= CHECK_INTERVAL_IN_SECONDS:
                 pg_verifier.periodic_check(TIME_NOW)
                 handle_web_requests(TIME_NOW, read_queue, write_queue, pg_verifier)
                 last_check_time = TIME_NOW
+
+            # pending check
+            if TIME_NOW < last_time_to_check_pending:
+                last_time_to_check_pending = TIME_NOW
+            if TIME_NOW - last_time_to_check_pending >= PENDING_CHECK_INTERVAL_IN_SECONDS:
+                log_info('PENDING: %d' % consumer.pending())
+                last_time_to_check_pending = TIME_NOW
 
     except KeyboardInterrupt:
         log_info('User interrupt this app.')
