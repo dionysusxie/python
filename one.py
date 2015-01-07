@@ -1,25 +1,28 @@
 #!/usr/bin/env python
 
+import threading
 import math
+
+print 'Thread name: %s' % threading.current_thread().getName()
 
 x = 2
 
 if x < 5 or (x > 10 and x < 20):
-  print "The value is OK."
+    print "The value is OK."
 
 if x < 5 or 10 < x < 20:
-  print "The value is OK."
+    print "The value is OK."
 
 for i in [1, 2, 3, 4, 5]:
-  print "This is iteration number", i
+    print "This is iteration number", i
 
 x = 10
 while x >= 0:
-  print "x is still not negative:", x
-  x = x - 1
+    print "x is still not negative:", x
+    x = x - 1
 
 for value in range(5):
-  print value
+    print value
 
 x = input("Please enter a number: ")
 print "The square of that number is", x * x
