@@ -7,5 +7,4 @@ def test():
     print '--- Test of module hello ---'
     hello()
 
-if __name__ == '__main__':
-    test()
+test()
