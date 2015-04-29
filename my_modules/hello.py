@@ -1,10 +1,11 @@
-name = 'xieliang'
+import hello2
+
+name = hello2.name
 
 def hello():
-    print 'Hello, world!'
+    hello2.hello()
 
 def test():
-    print '--- Test of module hello ---'
-    hello()
+    print '--- hello: All Test Passed!'
 
 test()
